@@ -1,12 +1,21 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "silhouette"
 version = "0.1.0"
 description = "A styling reasoning engine: solver for structure, model for taste."
+readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Puja Sridhar" }]
+keywords = ["styling", "constraint-programming", "explainable-ai", "evaluation"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = ["pyyaml>=6.0"]
 
 [project.optional-dependencies]

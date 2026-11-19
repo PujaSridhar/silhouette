@@ -306,3 +306,15 @@ lehenga, salwar, where the drape itself creates the break and the existing
 datasets have close to nothing.
 
 Full plan in the project spec.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Use it, fork it, build on it.
+
+Two things the licence does not cover, because they are not software. The
+styling rules in `rules/core.yaml` are one stylist's working knowledge written
+down; they are MIT like everything else, but they are calibrated to one eye and
+reproducing them does not reproduce the judgement behind them. And the frame in
+`data/style_cv.yaml` is a real person's measurements, published deliberately so
+the phase 0 findings can be checked — please do not treat it as a template for
+anybody else.
