@@ -60,8 +60,8 @@ evals:  ## scoreboard against labels (SOURCE=expert|bootstrap)
 fit:    ## fit rule weights to labels
 	$(PY) -m silhouette.cli fit --source $(or $(SOURCE),expert)
 
-coverage: ## labels per rule
-	$(PY) -m silhouette.cli coverage
+coverage: ## labels per rule (SOURCE=expert|bootstrap|all)
+	$(PY) -m silhouette.cli coverage --source $(or $(SOURCE),expert)
 
 demo-serve: ## serve the interactive demo
 	$(PY) -m http.server 8787 --directory demo

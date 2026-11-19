@@ -67,12 +67,17 @@ def _stratum(total: float, lo: float, hi: float) -> int:
 
 
 def _labelled_rule_counts(
-    store: LabelStore, wardrobe: list[Garment], cv: StyleCV, rules: list[Rule]
+    store: LabelStore,
+    wardrobe: list[Garment],
+    cv: StyleCV,
+    rules: list[Rule],
+    source: str | None = None,
 ) -> dict[str, int]:
     """How many labels exist per rule, by re-scoring each labelled outfit."""
     index = {g.id: g for g in wardrobe}
     counts: dict[str, int] = {r.id: 0 for r in rules}
-    for label in store.all():
+    pool = store.all() if source is None else [l for l in store.all() if l.source == source]
+    for label in pool:
         try:
             o = outfit_from_label(label, index)
             s = score(o, cv, cv.context(label.context), rules)
@@ -91,9 +96,10 @@ def next_batch(
     n: int = 20,
     contexts: list[str] | None = None,
     feasible_only: bool = True,
+    source: str | None = None,
 ) -> list[Task]:
     names = contexts or list(cv.contexts)
-    done = store.labelled_keys()
+    done = store.labelled_keys(source=source)
 
     pool: list[Task] = []
     all_outfits = list(candidates(wardrobe, cv.frame))
@@ -112,7 +118,7 @@ def next_batch(
     totals = [t.scored.total for t in pool]
     lo, hi = min(totals), max(totals)
 
-    rule_counts = _labelled_rule_counts(store, wardrobe, cv, rules)
+    rule_counts = _labelled_rule_counts(store, wardrobe, cv, rules, source=source)
     stratum_counts: dict[int, int] = {i: 0 for i in range(N_STRATA)}
 
     chosen: list[Task] = []
@@ -138,7 +144,11 @@ def next_batch(
 
 
 def coverage_report(
-    store: LabelStore, wardrobe: list[Garment], cv: StyleCV, rules: list[Rule]
+    store: LabelStore,
+    wardrobe: list[Garment],
+    cv: StyleCV,
+    rules: list[Rule],
+    source: str | None = None,
 ) -> dict[str, int]:
     """Labels per rule. A rule at zero has a weight nothing can falsify."""
-    return _labelled_rule_counts(store, wardrobe, cv, rules)
+    return _labelled_rule_counts(store, wardrobe, cv, rules, source=source)

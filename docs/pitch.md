@@ -178,8 +178,8 @@ Built and verifiable today:
 | wardrobe | 30 hand-annotated garments, 1,548 valid assemblies |
 | solver | exhaustive scoring at 158 µs/candidate; CP-SAT week planning with slack-based bottleneck diagnosis |
 | eval harness | rubric, active sampler, Spearman / quadratic-weighted kappa, judge + baseline, prior-anchored non-negative weight fitting with cross-validation |
-| tests | 90, including an end-to-end test that the fitter recovers a synthetic rater's known preferences from labels alone |
-| demo | interactive, JS port verified 74/74 against the Python engine in the browser |
+| tests | 97, including an end-to-end test that the fitter recovers a synthetic rater's known preferences from labels alone |
+| demo | interactive, JS port verified 76/76 against the Python engine in the browser |
 
 **Not built, and we say so:** no vision model yet (garments are hand-annotated),
 no app, no users, no revenue, and zero expert labels — the harness is validated

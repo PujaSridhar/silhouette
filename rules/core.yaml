@@ -21,9 +21,9 @@ rules:
     goal: elongate_lower_body
     weight: 0.85
     note: >
-      The core rule. A waistband above the natural waist, with nothing covering
-      it, moves the visual division into the upper third.
-    when: "f.break_ratio is not None and bottom.rise in ('high','super_high') and f.hem_drop <= 0.01 and 0.26 <= f.break_ratio <= 0.43"
+      The core rule. A high waistband or high dress waist seam, with nothing
+      covering it, moves the visual division into the upper third.
+    when: "f.break_ratio is not None and (bottom.rise in ('high','super_high') or dress.waist_seam in ('empire','natural')) and f.hem_drop <= 0.01 and 0.26 <= f.break_ratio <= 0.43"
     score: "norm(f.lift, 0.0, 0.12)"
     explain: >
       The break sits at {break_ratio:.0%} of your height instead of near the

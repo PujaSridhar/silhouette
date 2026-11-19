@@ -114,8 +114,13 @@ def cmd_gaps(args) -> int:
     print(RULE)
     print(f"{'item':<32}{'delta':>8}{'ctx':>6}{'strong':>8}   best in")
     for g in gaps[: args.top]:
-        where = max(g.per_context, key=lambda k: g.per_context[k]) if g.per_context else "-"
-        print(f"{g.item.name:<32}{g.best_delta:>+8.2f}{g.contexts_won:>6}"
+        if g.unlocked:
+            where = "unlocks " + ", ".join(g.unlocked)
+            delta_s = f"{g.best_delta:>+8.2f}" if g.best_delta > 0 else f"{'unlocks':>8}"
+        else:
+            where = max(g.per_context, key=lambda k: g.per_context[k]) if g.per_context else "-"
+            delta_s = f"{g.best_delta:>+8.2f}"
+        print(f"{g.item.name:<32}{delta_s}{g.contexts_won:>6}"
               f"{g.strong_new:>8}   {where}")
     print()
     return 0
@@ -195,7 +200,8 @@ def cmd_label(args) -> int:
     wardrobe, cv, rules = _load(args)
     store = LabelStore(args.labels)
     tasks = next_batch(wardrobe, cv, rules, store, n=args.n,
-                       contexts=args.contexts.split(",") if args.contexts else None)
+                       contexts=args.contexts.split(",") if args.contexts else None,
+                       source="expert")
     if not tasks:
         print("Nothing left to label for these contexts.")
         return 0
@@ -241,7 +247,8 @@ def cmd_bootstrap(args) -> int:
     wardrobe, cv, rules = _load(args)
     store = LabelStore(args.labels)
     tasks = next_batch(wardrobe, cv, rules, store, n=args.n,
-                       contexts=args.contexts.split(",") if args.contexts else None)
+                       contexts=args.contexts.split(",") if args.contexts else None,
+                       source="bootstrap")
     labels = make_labels(tasks, rules, noise=args.noise, seed=args.seed)
     for l in labels:
         store.append(l)
@@ -287,8 +294,12 @@ def cmd_eval(args) -> int:
 def cmd_coverage(args) -> int:
     wardrobe, cv, rules = _load(args)
     store = LabelStore(args.labels)
-    cov = coverage_report(store, wardrobe, cv, rules)
-    print(f"\nLabel coverage per rule - {len(store)} labels total")
+    src = None if args.source == "all" else args.source
+    cov = coverage_report(store, wardrobe, cv, rules, source=src)
+    n_labels = len(store.all()) if src is None else len(
+        store.expert() if src == "expert" else store.bootstrap()
+    )
+    print(f"\nLabel coverage per rule - {n_labels} {args.source} labels")
     print(RULE)
     for rid, n in sorted(cov.items(), key=lambda kv: (kv[1], kv[0])):
         bar = "#" * min(40, n)
@@ -490,6 +501,7 @@ def build_parser() -> argparse.ArgumentParser:
     h.set_defaults(fn=cmd_eval)
 
     i = sub.add_parser("coverage", help="labels per rule")
+    i.add_argument("--source", choices=["expert", "bootstrap", "all"], default="expert")
     i.set_defaults(fn=cmd_coverage)
 
     j = sub.add_parser("fit", help="fit rule weights to labels")

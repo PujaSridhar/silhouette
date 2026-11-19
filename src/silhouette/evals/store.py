@@ -70,8 +70,9 @@ class LabelStore:
             pairs.append((group[0], group[-1]))
         return pairs
 
-    def labelled_keys(self) -> set[str]:
-        return {l.outfit_key for l in self.all()}
+    def labelled_keys(self, source: str | None = None) -> set[str]:
+        pool = self.all() if source is None else [l for l in self.all() if l.source == source]
+        return {l.outfit_key for l in pool}
 
     def __len__(self) -> int:
         return len(self.all())

@@ -163,7 +163,7 @@ Phase 0 exists to answer one question before any GPU money is spent: **does the
 engine produce outfits a stylist would actually use?**
 
 Thirty hand-annotated garments, 17 rules, an exact solver, **no machine learning
-anywhere**. 66 tests, including a must-fire fixture for every rule and a
+anywhere**. 97 tests, including a must-fire fixture for every rule and a
 coverage test that fails when a rule is added without one.
 
 **Result: pass on reasoning.** The engine states the stylist's two rules back to
@@ -241,9 +241,9 @@ outfit, move the frame landmarks, watch the proportion math and the rules respon
 
 The demo re-implements the geometry and rule conditions in JavaScript so the sliders
 work live. A second implementation is a second chance to be wrong, so the page replays
-74 outfit/context cases whose answers the Python engine computed and compares every
+76 outfit/context cases whose answers the Python engine computed and compares every
 number and every fired rule. The badge in the corner reports the result — currently
-**74/74**. If the port ever drifts, the page says so itself.
+**76/76**. If the port ever drifts, the page says so itself.
 
 ## The labelling loop
 
@@ -274,6 +274,14 @@ here produced **the same rank correlation on both sides (+0.930)**, so the brows
 engine and the Python engine agree on the labelled outfits. At 16 labels the
 scoreboard still reports INDICATIVE ONLY and the fitter still refuses to claim an
 improvement, which is the behaviour we want.
+
+## Working on this next
+
+[`docs/handoff-next-fixes.md`](docs/handoff-next-fixes.md) is the current work
+order: seven verified fixes with acceptance criteria, and an explicit
+out-of-scope list. Read it before opening a PR — in particular, the rule logic
+exists twice (Python and JavaScript inside the page templates) and both must
+change together.
 
 ## Design decisions
 

@@ -12,11 +12,30 @@ def feat(cv, **kw):
     return compute(Outfit(**kw), cv.frame, cv.height_cm)
 
 
-def test_true_leg_ratio_is_anatomy_only(cv):
+def test_true_leg_ratio_is_anatomy_only(cv, W):
     """Shoes and clothes must never change the anatomical reference."""
     bare = feat(cv, top=None, bottom=None)
-    heeled = feat(cv, bottom=None, top=None)
+    heeled = feat(
+        cv,
+        top=W["top_crop_rib_ivory"],
+        bottom=W["bot_wide_blk"],
+        shoe=W["shoe_heel_blk_block"],
+    )
     assert bare.true_leg == heeled.true_leg == pytest.approx(0.5)
+
+
+def test_outfit_label_handles_empty_and_missing_top_when_tucked(W):
+    """tucked=True must annotate the top only, never crash or label the bottom."""
+    assert Outfit(tucked=True).label() == ""
+    no_top = Outfit(bottom=W["bot_wide_blk"], shoe=W["shoe_sneaker_white"], tucked=True)
+    assert "(tucked)" not in no_top.label()
+    with_top = Outfit(
+        top=W["top_blouse_struct_cream"],
+        bottom=W["bot_wide_blk"],
+        shoe=W["shoe_sneaker_white"],
+        tucked=True,
+    )
+    assert with_top.label().startswith(f"{W['top_blouse_struct_cream'].name} (tucked)")
 
 
 def test_rise_orders_break_ratio_monotonically(cv, W):

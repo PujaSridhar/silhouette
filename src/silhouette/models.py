@@ -130,9 +130,10 @@ class Outfit:
         return tuple(g.id for g in self.items) + (self.tucked,)
 
     def label(self) -> str:
-        bits = [g.name for g in self.items]
-        if self.tucked:
-            bits[0] += " (tucked)"
+        bits = [
+            f"{g.name} (tucked)" if (self.tucked and g is self.top) else g.name
+            for g in self.items
+        ]
         return " + ".join(bits)
 
 

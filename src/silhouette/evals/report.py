@@ -95,7 +95,7 @@ def evaluate_labels(
     self_qwk: float | None = None
     n_rep = 0
     if store is not None:
-        pairs = store.repeats()
+        pairs = store.repeats(source=source_used)
         n_rep = len(pairs)
         if n_rep >= 2:
             self_qwk = quadratic_weighted_kappa(
@@ -121,7 +121,11 @@ def evaluate_labels(
                     yes += int(by_key[key].would_wear)
         acceptance = (yes, seen) if seen else None
 
-    cov = coverage_report(store, wardrobe, cv, rules) if store is not None else {}
+    cov = (
+        coverage_report(store, wardrobe, cv, rules, source=source_used)
+        if store is not None
+        else {}
+    )
 
     return EvalReport(
         n_expert=sum(1 for l in labels if l.source == "expert"),

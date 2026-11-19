@@ -32,19 +32,28 @@ class Gap:
     item: Garment
     best_delta: float = 0.0
     contexts_won: int = 0
+    contexts_unlocked: int = 0
+    best_unlocked: float = float("-inf")
     strong_new: int = 0
     per_context: dict[str, float] = field(default_factory=dict)
+    unlocked: list[str] = field(default_factory=list)
 
     @property
     def rank_key(self) -> tuple:
-        return (-round(self.best_delta, 4), -self.contexts_won, -self.strong_new)
+        unlocked_tie = -round(self.best_unlocked, 4) if self.contexts_unlocked else 0.0
+        return (
+            -self.contexts_unlocked,
+            unlocked_tie,
+            -round(self.best_delta, 4),
+            -self.contexts_won,
+            -self.strong_new,
+        )
 
 
 def _baseline(
     wardrobe: list[Garment], cv: StyleCV, contexts: list[Context], rules: list[Rule]
 ) -> dict[str, float]:
     outfits = list(candidates(wardrobe, cv.frame))
-    out: float | dict[str, float] = {}
     best: dict[str, float] = {}
     for ctx in contexts:
         feas = [s.total for s in (score(o, cv, ctx, rules) for o in outfits) if s.feasible]
@@ -77,8 +86,15 @@ def analyse(
             if not feas:
                 gap.per_context[ctx.name] = 0.0
                 continue
-            delta = max(s.total for s in feas) - base[ctx.name]
-            delta = max(0.0, delta)
+            top = max(s.total for s in feas)
+            if base[ctx.name] == float("-inf"):
+                gap.per_context[ctx.name] = 0.0
+                gap.contexts_unlocked += 1
+                gap.contexts_won += 1
+                gap.unlocked.append(ctx.name)
+                gap.best_unlocked = max(gap.best_unlocked, top)
+                continue
+            delta = max(0.0, top - base[ctx.name])
             gap.per_context[ctx.name] = delta
             if delta > 1e-9:
                 gap.contexts_won += 1

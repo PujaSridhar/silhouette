@@ -302,3 +302,40 @@ def test_too_few_labels_claims_no_improvement(tmp_path, wardrobe, cv, rules):
     res = fit_weights(labels, wardrobe, cv, rules, folds=5)
     assert res.folds == 0
     assert not res.improved
+
+
+def test_source_filtering_isolates_expert_from_bootstrap(tmp_path, wardrobe, cv, rules):
+    """Bootstrap labels in the same store must never pollute expert sampling,
+    coverage, or self-agreement."""
+    from silhouette.evals.sampling import coverage_report
+
+    st = LabelStore(tmp_path / "l.jsonl")
+    boot_tasks = next_batch(wardrobe, cv, rules, st, n=5, contexts=["office"], source="bootstrap")
+    boot_labels = make_labels(boot_tasks, rules, seed=1)
+    for l in boot_labels:
+        st.append(l)
+    # Add repeated bootstrap labels so store.repeats() is non-empty for bootstrap.
+    for i, l in enumerate(boot_labels[:2]):
+        st.append(Label(
+            id=f"boot_rep_{i}", outfit=l.outfit, context=l.context,
+            ratings=l.ratings, overall=l.overall, would_wear=l.would_wear,
+            labeller=l.labeller, source="bootstrap",
+            created_at="2026-12-01T00:00:00+00:00",
+        ))
+
+    # Expert sampling must not skip outfits that only have bootstrap labels.
+    assert st.labelled_keys(source="expert") == set()
+    exp_tasks = next_batch(wardrobe, cv, rules, st, n=5, contexts=["office"], source="expert")
+    assert [t.key for t in exp_tasks] == [t.key for t in boot_tasks]
+
+    # Expert coverage must report zero across all rules.
+    exp_cov = coverage_report(st, wardrobe, cv, rules, source="expert")
+    assert all(n == 0 for n in exp_cov.values())
+    boot_cov = coverage_report(st, wardrobe, cv, rules, source="bootstrap")
+    assert sum(boot_cov.values()) > 0
+
+    # Expert evaluation must ignore bootstrap repeats and bootstrap coverage.
+    rep = evaluate_labels(st.expert(), wardrobe, cv, rules, store=st, source_used="expert")
+    assert rep.n_repeats == 0
+    assert rep.self_agreement_qwk is None
+    assert all(n == 0 for n in rep.coverage.values())

@@ -214,7 +214,7 @@ code{font-family:var(--f-mono);font-size:.92em;background:var(--sunk);padding:1p
 <footer>
   <p><b>What this is.</b> A working demo of a styling reasoning engine: a constraint
   solver over explicit rules, not a recommender. The reference implementation is Python
-  (17 rules, 30 hand-annotated garments, 90 tests). This page re-implements the geometry
+  (17 rules, 30 hand-annotated garments, 97 tests). This page re-implements the geometry
   and rule conditions in JavaScript so the sliders work live.</p>
   <p><b>Why the badge.</b> A second implementation is a second chance to be wrong, so the
   page replays outfits whose answers the Python engine computed and compares every number
@@ -392,7 +392,9 @@ const norm = (x,lo,hi) => x == null || hi === lo ? 0 : Math.max(0, Math.min(1, (
 const has = s => s && ["midi","maxi"].includes(s);
 const COND = {
   high_break_elongates: {
-    when: (o,f) => f.break_ratio !== null && ["high","super_high"].includes(o.bottom && o.bottom.rise)
+    when: (o,f) => f.break_ratio !== null
+      && (["high","super_high"].includes(o.bottom && o.bottom.rise)
+          || ["empire","natural"].includes(o.dress && o.dress.waist_seam))
       && f.hem_drop <= 0.01 && f.break_ratio >= 0.26 && f.break_ratio <= 0.43,
     score: (o,f) => norm(f.lift, 0.0, 0.12) },
   untucked_hem_cancels_the_rise: {
@@ -596,9 +598,7 @@ function currentOutfit(){
         outer: pick(state.outer), shoe: pick(state.shoe), tucked: false };
 }
 function labelOf(o){
-  const parts = items(o).map(g => g.name);
-  if (o.tucked && parts.length) parts[0] += " (tucked)";
-  return parts.join(" + ");
+  return items(o).map(g => (o.tucked && g === o.top) ? g.name + " (tucked)" : g.name).join(" + ");
 }
 
 function buildControls(){

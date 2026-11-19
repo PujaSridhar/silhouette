@@ -29,6 +29,20 @@ def test_high_break_elongates_does_not_fire_on_a_low_rise(fired_ids, W):
     assert "high_break_elongates" not in fired_ids(o, "weekend")
 
 
+def test_high_break_elongates_fires_on_empire_and_natural_seam_dresses(fired_ids, W):
+    empire = Outfit(dress=W["dress_anarkali_maroon"], shoe=W["shoe_heel_blk_block"])
+    natural = Outfit(dress=W["dress_wrap_floral"], shoe=W["shoe_heel_blk_block"])
+    column = Outfit(dress=W["dress_saree_teal"], shoe=W["shoe_heel_blk_block"])
+    drop = Outfit(
+        dress=dataclasses.replace(W["dress_wrap_floral"], waist_seam="drop"),
+        shoe=W["shoe_heel_blk_block"],
+    )
+    assert "high_break_elongates" in fired_ids(empire, "wedding_function")
+    assert "high_break_elongates" in fired_ids(natural, "dinner")
+    assert "high_break_elongates" not in fired_ids(column, "wedding_function")
+    assert "high_break_elongates" not in fired_ids(drop, "dinner")
+
+
 def test_untucked_hem_cancels_the_rise(fired_ids, verdict_for, W):
     o = Outfit(top=W["top_blouse_struct_cream"], bottom=W["bot_wide_cream"], shoe=W["shoe_sneaker_white"])
     ids = fired_ids(o, "campus")
@@ -229,3 +243,38 @@ def test_wardrobe_cannot_trigger_pattern_overload(wardrobe, cv):
         "an assembly with two patterns is now reachable, so the rule is no "
         "longer a coverage gap - delete this test and add a real fixture"
     )
+
+
+# ----------------------------------------------------------- language policy
+
+
+_FORBIDDEN_LANGUAGE = (
+    r"\bflattering\b",
+    r"\bflatter\b",
+    r"\bslimming\b",
+    r"\bhides?\b",
+    r"\bdisguises?\b",
+    r"\bcamouflages?\b",
+    r"\bminimi[sz]es?\b",
+    r"\bproblem area\b",
+    r"\bfigure flaws?\b",
+    r"\bbody flaws?\b",
+    r"\bbalances? out your\b",
+    r"\bcheats?\b",
+    r"\bfakes?\b",
+    r"\btricks? the eye\b",
+    r"\bdresses? for your shape\b",
+)
+
+
+def test_rule_messages_follow_language_policy(rules):
+    """Enforces docs/language-policy.md across every rule template."""
+    import re
+
+    hits: list[tuple[str, str]] = []
+    for r in rules:
+        text = " ".join(part for part in (r.explain, r.reject) if part)
+        for pat in _FORBIDDEN_LANGUAGE:
+            if re.search(pat, text, flags=re.IGNORECASE):
+                hits.append((r.id, pat))
+    assert not hits, f"language-policy violation in rule templates: {hits}"
