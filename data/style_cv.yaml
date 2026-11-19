@@ -1,0 +1,75 @@
+# Style CV — phase 0, hand-measured.
+# All landmark positions are fractions of BAREFOOT standing height, measured
+# downward from the crown. Width values are also fractions of standing height,
+# which makes every number here scale- and camera-invariant.
+#
+# In phase 1 these come from pose estimation (workstream W3). For now they are
+# measured by hand, which is the point: prove the engine before the model.
+
+owner: puja
+height_cm: 160.0
+version: 1
+
+frame:
+  landmarks:
+    crown:    0.000
+    chin:     0.130
+    shoulder: 0.185
+    bust:     0.270
+    waist:    0.400   # natural waist sits a little low -> shorter true leg line
+    hip:      0.500
+    knee:     0.730
+    ankle:    0.965
+    sole:     1.000
+  widths:
+    shoulder: 0.225
+    bust:     0.215
+    waist:    0.175
+    hip:      0.255
+    thigh:    0.160
+    calf:     0.105
+  confidence: 0.95
+  source: hand_measured
+
+# Goals are CHOSEN by the wearer and phrased as intent.
+# Nothing here describes a body as a problem. See docs/language-policy.md.
+goals:
+  - elongate_lower_body
+  - balance_lower_volume
+
+palette:
+  preferred_contrast: medium
+  neutrals: ["#1C1C1C", "#F2EFE9", "#E8DFCB", "#3A3A3C"]
+
+constraints:
+  hard:
+    - all_items_clean
+    - within_context_formality_band
+    - within_context_warmth_band
+
+contexts:
+  - name: weekend
+    formality_floor: 0.15
+    formality_ceiling: 0.52
+    clo_min: 0.15
+    clo_max: 0.80
+  - name: campus
+    formality_floor: 0.25
+    formality_ceiling: 0.60
+    clo_min: 0.15
+    clo_max: 0.90
+  - name: office
+    formality_floor: 0.50
+    formality_ceiling: 0.85
+    clo_min: 0.30
+    clo_max: 1.30
+  - name: dinner
+    formality_floor: 0.45
+    formality_ceiling: 0.80
+    clo_min: 0.15
+    clo_max: 1.00
+  - name: wedding_function
+    formality_floor: 0.68
+    formality_ceiling: 1.00
+    clo_min: 0.15
+    clo_max: 1.10

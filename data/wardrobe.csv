@@ -1,0 +1,31 @@
+id,name,category,subcategory,rise,length,fit,volume,volume_lower,structure,tuckable,neckline,sleeve,pattern,fabric_weight,drape,formality,clo,heel_cm,waist_seam,color_hex,availability
+top_tee_blk,Black fitted crew tee,top,tee,,waist,fitted,0.85,,0.12,yes,crew,short,solid,light,fluid,0.3,0.12,,,#1C1C1C,clean
+top_crop_rib_ivory,Ivory ribbed crop,top,crop_top,,crop,fitted,0.8,,0.1,no,crew,short,solid,light,structured_knit,0.28,0.1,,,#F2EFE9,clean
+top_tee_olive,Olive fitted tee,top,tee,,waist,fitted,0.85,,0.12,yes,crew,short,solid,light,fluid,0.3,0.12,,,#4A5340,clean
+top_cami_silk_blk,Black silk cami,top,camisole,,waist,fitted,0.8,,0.2,yes,scoop,sleeveless,solid,light,fluid,0.55,0.08,,,#16161A,clean
+top_blouse_struct_cream,Cream structured blouse,top,blouse,,hip,fitted,1.0,,0.65,yes,collar,long,solid,mid,crisp,0.7,0.2,,,#EDE4D3,clean
+top_blouse_puff_rust,Rust puff-sleeve blouse,top,blouse,,waist,fitted,0.95,,0.78,yes,vneck,puff,solid,mid,crisp,0.62,0.18,,,#9C4A2E,clean
+top_hoodie_oversized_grey,Grey oversized hoodie,top,hoodie,,hip,oversized,1.65,,0.15,no,hood,long,solid,heavy,soft,0.18,0.45,,,#8A8A8A,clean
+top_turtleneck_blk,Black fitted turtleneck,top,turtleneck,,waist,fitted,0.8,,0.25,yes,turtle,long,solid,mid,fluid,0.5,0.3,,,#121212,clean
+top_kurta_indigo,Indigo short kurta,top,kurta,,tunic,straight,1.2,,0.35,no,mandarin,three_quarter,solid,mid,fluid,0.55,0.22,,,#2E4057,clean
+top_shirt_linen_white,White linen shirt,top,shirt,,hip,relaxed,1.25,,0.5,yes,collar,long,solid,light,crisp,0.55,0.18,,,#FAF7F0,laundry
+bot_wide_blk,Black super-high wide-leg,bottom,wide_leg_trouser,super_high,full,relaxed,1.95,,0.4,,,,solid,mid,fluid,0.6,0.3,,,#1A1A1A,clean
+bot_wide_cream,Cream high-rise wide-leg,bottom,wide_leg_trouser,high,full,relaxed,1.85,,0.4,,,,solid,mid,fluid,0.58,0.28,,,#E8DFCB,clean
+bot_pleat_charcoal,Charcoal pleated trouser,bottom,pleated_trouser,high,ankle,straight,1.6,,0.6,,,,solid,mid,crisp,0.72,0.32,,,#3A3A3C,clean
+bot_jean_straight_indigo,Indigo high-rise straight jean,bottom,jean,high,full,straight,1.1,,0.35,,,,solid,heavy,crisp,0.35,0.4,,,#2B3A55,clean
+bot_jean_bootcut_mid,Mid-rise bootcut jean,bottom,jean,mid,full,straight,1.15,,0.3,,,,solid,heavy,crisp,0.33,0.4,,,#4A5B79,clean
+bot_jean_low_wash,Light-wash low-rise jean,bottom,jean,low,full,straight,1.05,,0.3,,,,solid,heavy,crisp,0.3,0.38,,,#6B7F9E,clean
+bot_palazzo_floral,Floral printed palazzo,bottom,palazzo,high,full,relaxed,2.1,,0.2,,,,floral,light,fluid,0.5,0.22,,,#7A3B5C,clean
+bot_skirt_pencil_blk,Black pencil skirt,bottom,pencil_skirt,high,knee,fitted,0.8,,0.7,,,,solid,mid,crisp,0.75,0.2,,,#141414,clean
+bot_wide_linen_sage,Sage wide linen pant,bottom,wide_leg_trouser,high,ankle,relaxed,1.8,,0.3,,,,solid,light,fluid,0.45,0.22,,,#9AA68F,clean
+bot_salwar_white,White salwar,bottom,salwar,high,ankle,relaxed,1.7,,0.25,,,,solid,light,fluid,0.6,0.2,,,#F5F2EA,clean
+dress_saree_teal,Teal silk saree,dress,saree,,maxi,draped,1.0,1.5,0.3,,,,solid,mid,fluid,0.9,0.35,,none,#176B6B,clean
+dress_anarkali_maroon,Maroon anarkali,dress,anarkali,,maxi,relaxed,0.95,1.9,0.5,,,,solid,mid,fluid,0.88,0.4,,empire,#6E1F2A,clean
+dress_shift_navy,Navy shift dress,dress,shift_dress,,knee,straight,1.1,1.1,0.4,,,,solid,mid,crisp,0.6,0.25,,none,#1F2A44,clean
+dress_wrap_floral,Floral wrap dress,dress,wrap_dress,,midi,fitted,1.0,1.25,0.45,,,,floral,light,fluid,0.58,0.22,,natural,#8A5A6B,clean
+out_blazer_blk,Black structured blazer,outer,blazer,,hip,fitted,1.05,,0.95,no,lapel,long,solid,mid,crisp,0.8,0.4,,,#171717,clean
+out_jacket_denim,Indigo denim jacket,outer,denim_jacket,,waist,straight,1.3,,0.55,no,collar,long,solid,heavy,crisp,0.35,0.35,,,#44597A,clean
+out_duster_camel,Camel long duster,outer,duster,,maxi,relaxed,1.4,,0.5,no,lapel,long,solid,mid,fluid,0.6,0.5,,,#B08A5E,clean
+shoe_sneaker_white,White leather sneaker,shoe,sneaker,,,straight,1.0,,0.4,,,,solid,heavy,crisp,0.3,0.05,2.0,,#F4F4F2,clean
+shoe_heel_blk_block,Black block heel,shoe,block_heel,,,fitted,0.9,,0.7,,,,solid,mid,crisp,0.7,0.05,7.0,,#141414,clean
+shoe_sandal_tan_flat,Tan flat sandal,shoe,flat_sandal,,,fitted,0.9,,0.35,,,,solid,light,fluid,0.4,0.03,1.0,,#B98E63,clean

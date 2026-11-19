@@ -1,0 +1,843 @@
+<title>Silhouette</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: a pattern-drafting sheet. Measured rules, chalk marks,
+   one pencil-red line for the thing being measured. */
+:root{
+  --paper:#EBEFF3; --surface:#F9FAFC; --sunk:#E1E7ED;
+  --ink:#15202B; --ink-soft:#5B6977; --ink-faint:#8795A3;
+  --rule:#C6D0DA; --rule-soft:#D9E1E8;
+  --chalk:#1C5FA8; --chalk-soft:#DCE8F6;
+  --mark:#AF3A27; --mark-soft:#F6E2DE;
+  --good:#2C7355; --warn:#8C6416;
+  --f-display:"Archivo Narrow",Arial Narrow,sans-serif;
+  --f-body:"Inter",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0E141A; --surface:#161F28; --sunk:#111A22;
+  --ink:#E7EEF4; --ink-soft:#93A1AF; --ink-faint:#6D7C8A;
+  --rule:#27333E; --rule-soft:#1E2831;
+  --chalk:#6FACEF; --chalk-soft:#16283D;
+  --mark:#E3826B; --mark-soft:#36211D;
+  --good:#5FB38C; --warn:#C79B4A;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0E141A; --surface:#161F28; --sunk:#111A22;
+  --ink:#E7EEF4; --ink-soft:#93A1AF; --ink-faint:#6D7C8A;
+  --rule:#27333E; --rule-soft:#1E2831;
+  --chalk:#6FACEF; --chalk-soft:#16283D;
+  --mark:#E3826B; --mark-soft:#36211D;
+  --good:#5FB38C; --warn:#C79B4A;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);line-height:1.55;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:28px 56px}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;letter-spacing:.01em;
+  text-wrap:balance;margin:0}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.13em;
+  font-size:.7rem;color:var(--ink-faint);font-weight:600}
+
+/* header */
+header{border-bottom:1px solid var(--rule);padding-bottom:20px;margin-bottom:28px}
+.masthead{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:flex-end;justify-content:space-between}
+h1{font-size:clamp(2rem,6vw,3rem);line-height:.95}
+h1 .sub{display:block;font-family:var(--f-body);font-weight:400;font-size:.8rem;
+  letter-spacing:.02em;color:var(--ink-soft);margin-top:8px;max-width:46ch;line-height:1.5}
+#parity{font-family:var(--f-mono);font-size:.68rem;border:1px solid var(--rule);
+  padding:7px 11px;background:var(--surface);min-width:190px}
+#parity b{font-weight:500}
+.pstate{display:block;margin-top:3px;color:var(--ink-faint)}
+.ok{color:var(--good)} .bad{color:var(--mark)}
+
+/* sections */
+section{margin-top:40px}
+.shead{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;
+  border-bottom:1px solid var(--rule-soft);padding-bottom:8px;margin-bottom:20px}
+.shead h2{font-size:1.2rem}
+.shead p{margin:0;font-size:.82rem;color:var(--ink-soft);max-width:62ch}
+
+/* studio */
+.studio{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:28px;align-items:start}
+@media(max-width:760px){.studio{grid-template-columns:1fr}}
+.sheet{background:var(--surface);border:1px solid var(--rule);padding:14px}
+svg{display:block;width:100%;height:auto;max-width:100%}
+
+.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));
+  gap:1px;background:var(--rule);border:1px solid var(--rule);margin-bottom:18px}
+.cell{background:var(--surface);padding:10px 12px;min-width:0}
+.cell .k{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.1em;
+  font-size:.62rem;color:var(--ink-faint);font-weight:600}
+.cell .v{font-family:var(--f-mono);font-variant-numeric:tabular-nums;
+  font-size:1.3rem;line-height:1.25;margin-top:2px}
+.cell .n{font-size:.68rem;color:var(--ink-faint);line-height:1.35}
+.cell.lift .v{color:var(--mark)}
+
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+label{display:block;font-family:var(--f-display);text-transform:uppercase;
+  letter-spacing:.1em;font-size:.62rem;color:var(--ink-faint);font-weight:600;margin-bottom:4px}
+select,input[type=range]{width:100%;font-family:var(--f-body);font-size:.84rem}
+select{padding:7px 8px;background:var(--surface);color:var(--ink);
+  border:1px solid var(--rule);border-radius:0}
+.seg{display:flex;border:1px solid var(--rule)}
+.seg button{flex:1;padding:7px 4px;font-family:var(--f-display);font-size:.72rem;
+  text-transform:uppercase;letter-spacing:.08em;background:var(--surface);
+  color:var(--ink-soft);border:0;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--chalk);color:#fff}
+.tuck{display:flex;align-items:center;gap:8px;margin-top:4px}
+.tuck input{width:auto;accent-color:var(--chalk)}
+.tuck span{font-size:.8rem;color:var(--ink-soft);text-transform:none;letter-spacing:0;
+  font-family:var(--f-body);font-weight:400}
+
+/* verdict */
+.verdict{margin-top:18px;border:1px solid var(--rule);background:var(--surface)}
+.vhead{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;
+  align-items:baseline;padding:11px 14px;border-bottom:1px solid var(--rule-soft)}
+.vhead .t{font-family:var(--f-display);font-size:.95rem}
+.vhead .s{font-family:var(--f-mono);font-size:1.1rem}
+.rules{list-style:none;margin:0;padding:0}
+.rules li{display:grid;grid-template-columns:62px minmax(0,1fr);gap:12px;
+  padding:10px 14px;border-bottom:1px solid var(--rule-soft);font-size:.86rem}
+.rules li:last-child{border-bottom:0}
+.rules .c{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:.8rem}
+.plus .c{color:var(--good)} .minus .c{color:var(--warn)} .rej .c{color:var(--mark)}
+.rej{background:var(--mark-soft)}
+.rid{display:block;font-family:var(--f-mono);font-size:.64rem;color:var(--ink-faint);
+  margin-top:4px;word-break:break-word}
+
+/* ladder */
+.ladder{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.ladder li{display:grid;grid-template-columns:minmax(120px,1.4fr) minmax(0,3fr) 62px;
+  gap:10px;align-items:center;font-size:.82rem;padding:3px 0}
+.ladder .nm{min-width:0;overflow-wrap:anywhere}
+.ladder .track{height:16px;background:var(--sunk);position:relative}
+.ladder .fill{position:absolute;top:0;bottom:0;background:var(--chalk)}
+.ladder .fill.neg{background:var(--mark)}
+.ladder .zero{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--ink-faint)}
+.ladder .vv{font-family:var(--f-mono);font-variant-numeric:tabular-nums;
+  text-align:right;font-size:.78rem}
+.ladder li.cur{background:var(--chalk-soft)}
+.ladder li.cur .nm{font-weight:600}
+
+/* frame */
+.frame{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px}
+.srow{display:flex;justify-content:space-between;font-size:.72rem;color:var(--ink-faint);
+  font-family:var(--f-mono)}
+.note{font-size:.8rem;color:var(--ink-soft);margin:16px 0 0;max-width:68ch}
+
+/* picks */
+.picks{display:grid;gap:12px}
+.pick{border:1px solid var(--rule);background:var(--surface);padding:12px 14px}
+.pick .ph{display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:space-between;align-items:baseline}
+.pick .pn{font-family:var(--f-display);font-size:.92rem}
+.pick .ps{font-family:var(--f-mono);font-size:.92rem;color:var(--chalk)}
+.pick .pm{font-family:var(--f-mono);font-size:.7rem;color:var(--ink-faint);margin-top:5px}
+.pick .pw{font-size:.82rem;color:var(--ink-soft);margin-top:7px}
+.pick button{margin-top:9px;font-family:var(--f-display);text-transform:uppercase;
+  letter-spacing:.08em;font-size:.66rem;padding:5px 10px;background:transparent;
+  color:var(--chalk);border:1px solid var(--chalk);cursor:pointer}
+
+footer{margin-top:52px;border-top:1px solid var(--rule);padding-top:18px;
+  font-size:.78rem;color:var(--ink-soft)}
+footer p{margin:0 0 9px;max-width:76ch}
+code{font-family:var(--f-mono);font-size:.92em;background:var(--sunk);padding:1px 4px}
+:focus-visible{outline:2px solid var(--chalk);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="masthead">
+    <h1>Silhouette
+      <span class="sub">Styling is measurable illusion work. A high rise does not change your
+      legs &mdash; it moves the visual break into the upper third. This engine measures that,
+      then tells you which rule it used.</span>
+    </h1>
+    <div id="parity">loading&hellip;</div>
+  </div>
+</header>
+
+<section>
+  <div class="shead">
+    <h2>The fitting room</h2>
+    <p>Assemble an outfit. Every number below is computed, not stored.</p>
+  </div>
+  <div class="studio">
+    <div class="sheet"><svg id="fig" viewBox="0 0 260 440" role="img"
+      aria-label="Proportion diagram showing where the visual break falls"></svg></div>
+    <div>
+      <div class="readout" id="readout"></div>
+      <div class="controls" id="controls"></div>
+      <div class="verdict">
+        <div class="vhead"><span class="t" id="vlabel"></span><span class="s num" id="vscore"></span></div>
+        <ul class="rules" id="vrules"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <h2>What the rise buys</h2>
+    <p>Same top, same shoes, every bottom in the wardrobe. <code>lift</code> is apparent
+       leg length minus actual, in fractions of height. It goes negative.</p>
+  </div>
+  <ul class="ladder" id="ladder"></ul>
+</section>
+
+<section>
+  <div class="shead">
+    <h2>The frame</h2>
+    <p>Hand-measured here. In the product these come from a photo.</p>
+  </div>
+  <div class="frame" id="frame"></div>
+  <p class="note" id="framenote"></p>
+</section>
+
+<section>
+  <div class="shead">
+    <h2>What the engine would pick</h2>
+    <p>Best three for this occasion, recomputed from the frame above. Capped at one
+       suggestion per bottom &mdash; three variations on one trouser is one suggestion.</p>
+  </div>
+  <div class="picks" id="picks"></div>
+</section>
+
+<footer>
+  <p><b>What this is.</b> A working demo of a styling reasoning engine: a constraint
+  solver over explicit rules, not a recommender. The reference implementation is Python
+  (17 rules, 30 hand-annotated garments, 90 tests). This page re-implements the geometry
+  and rule conditions in JavaScript so the sliders work live.</p>
+  <p><b>Why the badge.</b> A second implementation is a second chance to be wrong, so the
+  page replays outfits whose answers the Python engine computed and compares every number
+  and every fired rule. If the port drifts, the badge turns red and says which case
+  failed.</p>
+  <p><b>Honest limits.</b> <code>volume</code> and <code>structure</code> are hand-judged by
+  one person, landmarks are measured from one body, and the rule weights are set by
+  judgement rather than fitted &mdash; the eval harness exists to fix that last one.</p>
+</footer>
+</div>
+
+<script id="engine-data" type="application/json">__ENGINE_DATA__</script>
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("engine-data").textContent);
+const G = Object.fromEntries(DATA.garments.map(g => [g.id, g]));
+const CTX = Object.fromEntries(DATA.styleCV.contexts.map(c => [c.name, c]));
+const RULES = DATA.rules;
+
+/* ---------------------------------------------------------------- colour
+   sRGB -> CIELAB and CIEDE2000, ported from src/silhouette/color.py.
+   Perceived contrast, not RGB distance: navy and black are far apart in RGB
+   and the same colour to the eye. */
+const D65 = [0.95047, 1.0, 1.08883];
+const M = [[0.4124564,0.3575761,0.1804375],[0.2126729,0.7151522,0.0721750],
+           [0.0193339,0.1191920,0.9503041]];
+const labMemo = new Map();
+function hexToLab(hex){
+  if (labMemo.has(hex)) return labMemo.get(hex);
+  let s = String(hex).trim().replace(/^#/, "");
+  if (s.length === 3) s = s.split("").map(c => c + c).join("");
+  const rgb = [0,2,4].map(i => parseInt(s.slice(i, i+2), 16) / 255);
+  const linv = rgb.map(c => c <= 0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4));
+  const xyz = M.map(r => r[0]*linv[0] + r[1]*linv[1] + r[2]*linv[2]);
+  const f = t => t > 216/24389 ? Math.cbrt(t) : (841/108)*t + 4/29;
+  const [fx,fy,fz] = xyz.map((v,i) => f(v / D65[i]));
+  const lab = [116*fy - 16, 500*(fx-fy), 200*(fy-fz)];
+  labMemo.set(hex, lab);
+  return lab;
+}
+const deg = r => r * 180 / Math.PI, rad = d => d * Math.PI / 180;
+const P25_7 = Math.pow(25, 7);
+function deltaE2000(lab1, lab2){
+  const [L1,a1,b1] = lab1, [L2,a2,b2] = lab2;
+  const C1 = Math.hypot(a1,b1), C2 = Math.hypot(a2,b2);
+  const Cbar = (C1 + C2) / 2, Cbar7 = Math.pow(Cbar, 7);
+  const Gg = Cbar > 0 ? 0.5 * (1 - Math.sqrt(Cbar7 / (Cbar7 + P25_7))) : 0;
+  const a1p = (1+Gg)*a1, a2p = (1+Gg)*a2;
+  const C1p = Math.hypot(a1p,b1), C2p = Math.hypot(a2p,b2);
+  const h1p = (a1p || b1) ? ((deg(Math.atan2(b1,a1p)) % 360) + 360) % 360 : 0;
+  const h2p = (a2p || b2) ? ((deg(Math.atan2(b2,a2p)) % 360) + 360) % 360 : 0;
+  const dLp = L2 - L1, dCp = C2p - C1p;
+  let dhp;
+  if (C1p * C2p === 0) dhp = 0;
+  else if (Math.abs(h2p - h1p) <= 180) dhp = h2p - h1p;
+  else if (h2p - h1p > 180) dhp = h2p - h1p - 360;
+  else dhp = h2p - h1p + 360;
+  const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin(rad(dhp / 2));
+  const Lbarp = (L1 + L2) / 2, Cbarp = (C1p + C2p) / 2;
+  let hbarp;
+  if (C1p * C2p === 0) hbarp = h1p + h2p;
+  else if (Math.abs(h1p - h2p) <= 180) hbarp = (h1p + h2p) / 2;
+  else if (h1p + h2p < 360) hbarp = (h1p + h2p + 360) / 2;
+  else hbarp = (h1p + h2p - 360) / 2;
+  const T = 1 - 0.17*Math.cos(rad(hbarp-30)) + 0.24*Math.cos(rad(2*hbarp))
+              + 0.32*Math.cos(rad(3*hbarp+6)) - 0.20*Math.cos(rad(4*hbarp-63));
+  const dTheta = 30 * Math.exp(-Math.pow((hbarp - 275) / 25, 2));
+  const Cbarp7 = Math.pow(Cbarp, 7);
+  const Rc = Cbarp > 0 ? 2 * Math.sqrt(Cbarp7 / (Cbarp7 + P25_7)) : 0;
+  const Rt = -Rc * Math.sin(rad(2 * dTheta));
+  const sq = Math.pow(Lbarp - 50, 2);
+  const Sl = 1 + (0.015 * sq) / Math.sqrt(20 + sq);
+  const Sc = 1 + 0.045 * Cbarp;
+  const Sh = 1 + 0.015 * Cbarp * T;
+  return Math.sqrt(Math.pow(dLp/Sl,2) + Math.pow(dCp/Sc,2) + Math.pow(dHp/Sh,2)
+                   + Rt * (dCp/Sc) * (dHp/Sh));
+}
+const contrastHex = (a,b) => deltaE2000(hexToLab(a), hexToLab(b));
+
+/* -------------------------------------------------------------- geometry
+   Mirrors src/silhouette/geometry.py. Positions are fractions of barefoot
+   height measured from the crown, so everything is scale-invariant. */
+const TUCK_TOL = 0.010;
+const RISE = {
+  super_high: L => L.waist - 0.015,
+  high:       L => L.waist,
+  mid:        L => L.waist + 0.50 * (L.hip - L.waist),
+  low:        L => L.hip - 0.010,
+};
+const LENGTH = {
+  crop:  L => L.waist - 0.055,
+  waist: L => L.waist + 0.005,
+  hip:   L => L.hip + 0.025,
+  tunic: L => L.hip + 0.45 * (L.knee - L.hip),
+  knee:  L => L.knee,
+  midi:  L => L.knee + 0.55 * (L.ankle - L.knee),
+  maxi:  L => L.ankle - 0.010,
+  ankle: L => L.ankle,
+  full:  L => L.ankle,
+};
+const SEAM = {
+  empire:  L => L.bust + 0.40 * (L.waist - L.bust),
+  natural: L => L.waist,
+  drop:    L => L.hip,
+  none:    () => null,
+};
+const waistbandY = (g,L) => (g && RISE[g.rise]) ? RISE[g.rise](L) : null;
+const hemY       = (g,L) => (g && LENGTH[g.length]) ? LENGTH[g.length](L) : null;
+const seamY      = (g,L) => { const fn = SEAM[(g && g.waist_seam) || "none"]; return fn ? fn(L) : null; };
+const lowerVol = g => g.volume_lower != null ? g.volume_lower : g.volume;
+const mean = xs => xs.length ? xs.reduce((a,b) => a+b, 0) / xs.length : 0;
+
+function items(o){ return [o.top,o.bottom,o.dress,o.outer,o.shoe].filter(Boolean); }
+
+function compute(o, frame){
+  const L = frame.landmarks, H = frame.heightCm;
+  const heel = o.shoe ? o.shoe.heel_cm : 0;
+  const total = 1 + heel / H;
+  let breakY = null, hemDrop = 0, source = "none", upperVol, lowVol, upperItems;
+
+  if (o.dress){
+    breakY = seamY(o.dress, L);
+    source = breakY !== null ? "dress_seam" : "none";
+    upperItems = [o.dress].concat(o.outer ? [o.outer] : []);
+    upperVol = mean(upperItems.map(g => g.volume));
+    lowVol = lowerVol(o.dress);
+  } else {
+    const wb = waistbandY(o.bottom, L);
+    const rawHem = hemY(o.top, L);
+    const hem = (o.tucked && o.top && o.top.tuckable && wb !== null) ? wb : rawHem;
+    if (wb === null){
+      breakY = hem; source = hem !== null ? "top_hem" : "none";
+    } else if (hem === null){
+      breakY = wb; source = "waistband";
+    } else if (hem <= wb + TUCK_TOL){
+      breakY = wb; source = "waistband";
+    } else {
+      breakY = hem; source = "top_hem"; hemDrop = hem - wb;
+    }
+    upperItems = (o.top ? [o.top] : []).concat(o.outer ? [o.outer] : []);
+    upperVol = mean(upperItems.map(g => g.volume));
+    lowVol = o.bottom ? o.bottom.volume : 1.0;
+  }
+
+  const trueLeg = 1 - L.hip;
+  let breakRatio = null, apparent = null, lift = 0;
+  if (breakY !== null){
+    breakRatio = breakY / total;
+    apparent = (total - breakY) / total;
+    lift = apparent - trueLeg;
+  }
+  const contrast = (o.dress || !(o.top && o.bottom)) ? 0
+    : contrastHex(o.top.color_hex, o.bottom.color_hex);
+  const its = items(o);
+  const fs = its.map(g => g.formality);
+  return {
+    break_ratio: breakRatio, apparent_leg: apparent, true_leg: trueLeg, lift,
+    hem_drop: hemDrop, break_source: source, is_column: breakY === null,
+    upper_volume: upperVol, lower_volume: lowVol, asymmetry: upperVol - lowVol,
+    upper_structure: upperItems.length ? Math.max(...upperItems.map(g => g.structure)) : 0,
+    contrast_at_break: contrast,
+    min_formality: fs.length ? Math.min(...fs) : 0.5,
+    max_formality: fs.length ? Math.max(...fs) : 0.5,
+    total_clo: its.reduce((a,g) => a + g.clo, 0),
+    pattern_count: its.filter(g => g.pattern !== "solid").length,
+    heel_cm: heel, height_total: total,
+  };
+}
+
+/* ----------------------------------------------------------------- rules
+   Conditions transcribed from rules/core.yaml. Message text comes from the
+   exported JSON, so wording has a single source; only these predicates are
+   duplicated, which is what the parity fixture checks. */
+const norm = (x,lo,hi) => x == null || hi === lo ? 0 : Math.max(0, Math.min(1, (x-lo)/(hi-lo)));
+const has = s => s && ["midi","maxi"].includes(s);
+const COND = {
+  high_break_elongates: {
+    when: (o,f) => f.break_ratio !== null && ["high","super_high"].includes(o.bottom && o.bottom.rise)
+      && f.hem_drop <= 0.01 && f.break_ratio >= 0.26 && f.break_ratio <= 0.43,
+    score: (o,f) => norm(f.lift, 0.0, 0.12) },
+  untucked_hem_cancels_the_rise: {
+    when: (o,f) => ["high","super_high"].includes(o.bottom && o.bottom.rise) && f.hem_drop > 0.015,
+    score: (o,f) => -norm(f.hem_drop, 0.0, 0.12) },
+  heel_extends_the_leg_line: {
+    when: (o,f) => f.heel_cm >= 3.0,
+    score: (o,f) => norm(f.heel_cm, 2.0, 9.0) },
+  long_outer_adds_vertical_line: {
+    when: (o) => has(o.outer && o.outer.length), score: () => 1.0 },
+  drape_reads_as_one_column: {
+    when: (o,f) => f.is_column && !!o.dress, score: () => 1.0 },
+  fitted_top_counterweights_volume: {
+    when: (o,f,fr) => fr.hipToShoulder > 1.05 && f.lower_volume >= 1.30 && f.upper_volume <= 1.00,
+    score: () => 1.0 },
+  volume_on_volume_loses_the_line: {
+    when: (o,f) => f.lower_volume >= 1.30 && f.upper_volume > 1.15,
+    score: (o,f) => -norm(f.upper_volume, 1.15, 1.70) },
+  structure_above_balances_volume_below: {
+    when: (o,f,fr) => fr.shoulderToHip < 0.95 && f.asymmetry < -0.95 && f.upper_structure >= 0.50,
+    score: (o,f) => 0.4 + 0.6 * norm(f.upper_structure, 0.50, 0.95) },
+  flat_upper_under_high_volume: {
+    when: (o,f,fr) => fr.shoulderToHip < 0.95 && f.asymmetry < -0.95 && f.upper_structure < 0.30,
+    score: (o,f) => -norm(-f.asymmetry, 0.95, 1.40) },
+  monochrome_column_rescues_central_break: {
+    when: (o,f) => f.break_ratio !== null && f.break_ratio >= 0.44 && f.break_ratio <= 0.56
+      && !!o.top && !!o.bottom && f.contrast_at_break < 12.0,
+    score: (o,f) => 1.0 - norm(f.contrast_at_break, 0.0, 12.0) },
+  high_contrast_at_central_break: {
+    when: (o,f) => f.break_ratio !== null && f.break_ratio >= 0.44 && f.break_ratio <= 0.56
+      && !!o.top && !!o.bottom && f.contrast_at_break >= 18.0,
+    score: (o,f) => -norm(f.contrast_at_break, 18.0, 55.0) },
+  contrast_sharpens_a_high_break: {
+    when: (o,f) => f.break_ratio !== null && f.break_ratio < 0.42
+      && !!o.top && !!o.bottom && f.contrast_at_break >= 15.0,
+    score: (o,f) => norm(f.contrast_at_break, 15.0, 60.0) },
+  pattern_competes_with_pattern: {
+    when: (o,f) => f.pattern_count >= 2, score: () => -1.0 },
+  overdressed_for_context: {
+    when: (o,f,fr,c) => f.max_formality > c.formality_ceiling,
+    score: (o,f,fr,c) => -norm(f.max_formality - c.formality_ceiling, 0.0, 0.35) },
+  meets_context_formality_floor: {
+    forbid: (o,f,fr,c) => f.min_formality < c.formality_floor },
+  everything_must_be_available: {
+    forbid: (o) => items(o).some(g => g.availability !== "clean") },
+  within_context_warmth_band: {
+    forbid: (o,f,fr,c) => f.total_clo < c.clo_min || f.total_clo > c.clo_max },
+};
+
+const FMT = {
+  pct0: v => (v*100).toFixed(0) + "%",
+  f0: v => v.toFixed(0), f2: v => v.toFixed(2), f3: v => v.toFixed(3),
+  s3: v => (v >= 0 ? "+" : "") + v.toFixed(3),
+};
+function render(tpl, facts){
+  return tpl.replace(/\{(\w+)(?:\|(\w+))?\}/g, (_m, name, spec) => {
+    const v = facts[name];
+    if (v === null || v === undefined) return "n/a";
+    return spec && FMT[spec] ? FMT[spec](v) : String(v);
+  });
+}
+function factsFor(o, f, c){
+  const nm = g => g ? g.name : "";
+  return Object.assign({}, f, {
+    ctx_name: c.name, formality_floor: c.formality_floor,
+    formality_ceiling: c.formality_ceiling, clo_min: c.clo_min, clo_max: c.clo_max,
+    top_name: nm(o.top), bottom_name: nm(o.bottom), dress_name: nm(o.dress),
+    outer_name: nm(o.outer), shoe_name: nm(o.shoe),
+    dirty: items(o).filter(g => g.availability !== "clean").map(g => g.name).join(", "),
+  });
+}
+
+function frameDerived(frame){
+  const w = frame.widths;
+  return { hipToShoulder: w.hip / w.shoulder, shoulderToHip: w.shoulder / w.hip };
+}
+
+function evaluate(o, f, frame, c, goals){
+  const fr = frameDerived(frame);
+  const facts = factsFor(o, f, c);
+  const fired = [], violations = [];
+  let total = 0;
+  for (const r of RULES){
+    if (r.goal && !goals.includes(r.goal)) continue;
+    const cond = COND[r.id];
+    if (!cond) continue;
+    if (r.kind === "hard"){
+      if (cond.forbid(o, f, fr, c)) violations.push({ id: r.id, msg: render(r.reject, facts) });
+      continue;
+    }
+    if (!cond.when(o, f, fr, c)) continue;
+    const raw = cond.score(o, f, fr, c);
+    const contribution = r.weight * raw;
+    if (contribution === 0) continue;
+    total += contribution;
+    fired.push({ id: r.id, contribution, msg: render(r.explain, facts) });
+  }
+  return { total, fired, violations, feasible: violations.length === 0 };
+}
+
+function scoreOutfit(o, frame, ctxName, goals){
+  const f = compute(o, frame);
+  return { outfit: o, f, v: evaluate(o, f, frame, CTX[ctxName], goals) };
+}
+
+/* ---------------------------------------------------------------- solver */
+const byCat = c => DATA.garments.filter(g => g.category === c);
+function tuckChanges(top, bottom, L){
+  if (!top || !top.tuckable) return false;
+  const wb = waistbandY(bottom, L), hem = hemY(top, L);
+  return wb !== null && hem !== null && hem > wb + TUCK_TOL;
+}
+function allCandidates(frame){
+  const L = frame.landmarks;
+  const out = [];
+  const outers = [null].concat(byCat("outer"));
+  for (const shoe of byCat("shoe")) for (const outer of outers){
+    for (const top of byCat("top")) for (const bottom of byCat("bottom")){
+      out.push({ top, bottom, dress: null, outer, shoe, tucked: false });
+      if (tuckChanges(top, bottom, L))
+        out.push({ top, bottom, dress: null, outer, shoe, tucked: true });
+    }
+    for (const dress of byCat("dress"))
+      out.push({ top: null, bottom: null, dress, outer, shoe, tucked: false });
+  }
+  return out;
+}
+function best(frame, ctxName, goals, n, maxPerAnchor){
+  const pool = allCandidates(frame)
+    .map(o => scoreOutfit(o, frame, ctxName, goals))
+    .filter(s => s.v.feasible)
+    .sort((a,b) => b.v.total - a.v.total);
+  if (!maxPerAnchor) return pool.slice(0, n);
+  const seen = new Map(), out = [];
+  for (const s of pool){
+    const a = s.outfit.dress ? s.outfit.dress.id : (s.outfit.bottom ? s.outfit.bottom.id : "-");
+    if ((seen.get(a) || 0) >= maxPerAnchor) continue;
+    seen.set(a, (seen.get(a) || 0) + 1);
+    out.push(s);
+    if (out.length >= n) break;
+  }
+  return out;
+}
+
+/* ---------------------------------------------------------- parity check */
+function runParity(){
+  const frame = { landmarks: DATA.styleCV.landmarks, widths: DATA.styleCV.widths,
+                  heightCm: DATA.styleCV.heightCm };
+  const goals = DATA.styleCV.goals;
+  const near = (a,b,t) => (a === null || b === null) ? a === b : Math.abs(a-b) <= t;
+  const fails = [];
+  for (const row of DATA.parity){
+    const o = {
+      top: row.outfit.top ? G[row.outfit.top] : null,
+      bottom: row.outfit.bottom ? G[row.outfit.bottom] : null,
+      dress: row.outfit.dress ? G[row.outfit.dress] : null,
+      outer: row.outfit.outer ? G[row.outfit.outer] : null,
+      shoe: row.outfit.shoe ? G[row.outfit.shoe] : null,
+      tucked: !!row.outfit.tucked,
+    };
+    const s = scoreOutfit(o, frame, row.context, goals);
+    const why = [];
+    if (!near(s.f.break_ratio, row.breakRatio, 1e-9)) why.push("break_ratio");
+    if (!near(s.f.lift, row.lift, 1e-9)) why.push("lift");
+    if (!near(s.f.hem_drop, row.hemDrop, 1e-9)) why.push("hem_drop");
+    if (!near(s.f.contrast_at_break, row.contrast, 1e-6)) why.push("contrast");
+    if (!near(s.f.upper_volume, row.upperVolume, 1e-9)) why.push("upper_volume");
+    if (!near(s.f.lower_volume, row.lowerVolume, 1e-9)) why.push("lower_volume");
+    if (!near(s.v.total, row.total, 1e-6)) why.push("total");
+    if (s.v.feasible !== row.feasible) why.push("feasible");
+    const firedJs = s.v.fired.map(x => x.id).sort().join(",");
+    const violJs = s.v.violations.map(x => x.id).sort().join(",");
+    if (firedJs !== row.fired.join(",")) why.push("fired");
+    if (violJs !== row.violated.join(",")) why.push("violated");
+    if (why.length) fails.push({ row, why });
+  }
+  return { n: DATA.parity.length, fails };
+}
+
+/* -------------------------------------------------------------------- UI */
+const FRAME = {
+  landmarks: Object.assign({}, DATA.styleCV.landmarks),
+  widths: Object.assign({}, DATA.styleCV.widths),
+  heightCm: DATA.styleCV.heightCm,
+};
+const GOALS = DATA.styleCV.goals.slice();
+const state = {
+  mode: "two", ctx: "office",
+  top: "top_crop_rib_ivory", bottom: "bot_wide_blk",
+  dress: "dress_saree_teal", outer: "", shoe: "shoe_heel_blk_block",
+  tucked: false,
+};
+const el = id => document.getElementById(id);
+
+function currentOutfit(){
+  const pick = id => id ? G[id] : null;
+  return state.mode === "two"
+    ? { top: pick(state.top), bottom: pick(state.bottom), dress: null,
+        outer: pick(state.outer), shoe: pick(state.shoe), tucked: state.tucked }
+    : { top: null, bottom: null, dress: pick(state.dress),
+        outer: pick(state.outer), shoe: pick(state.shoe), tucked: false };
+}
+function labelOf(o){
+  const parts = items(o).map(g => g.name);
+  if (o.tucked && parts.length) parts[0] += " (tucked)";
+  return parts.join(" + ");
+}
+
+function buildControls(){
+  const opts = (list, sel, blank) =>
+    (blank ? `<option value="">${blank}</option>` : "") +
+    list.map(g => `<option value="${g.id}"${g.id === sel ? " selected" : ""}>${g.name}</option>`).join("");
+  const c = el("controls");
+  c.innerHTML = `
+    <div><label for="c-ctx">Occasion</label>
+      <select id="c-ctx">${DATA.styleCV.contexts.map(x =>
+        `<option value="${x.name}"${x.name === state.ctx ? " selected" : ""}>${x.name.replace(/_/g," ")}</option>`).join("")}</select></div>
+    <div><label>Shape</label><div class="seg">
+      <button type="button" id="m-two" aria-pressed="${state.mode==="two"}">Top + bottom</button>
+      <button type="button" id="m-one" aria-pressed="${state.mode==="one"}">One-piece</button>
+    </div></div>
+    ${state.mode === "two" ? `
+    <div><label for="c-top">Top</label><select id="c-top">${opts(byCat("top"), state.top)}</select></div>
+    <div><label for="c-bot">Bottom</label><select id="c-bot">${opts(byCat("bottom"), state.bottom)}</select></div>
+    ` : `
+    <div><label for="c-dress">One-piece</label><select id="c-dress">${opts(byCat("dress"), state.dress)}</select></div>
+    `}
+    <div><label for="c-out">Layer</label><select id="c-out">${opts(byCat("outer"), state.outer, "none")}</select></div>
+    <div><label for="c-shoe">Shoes</label><select id="c-shoe">${opts(byCat("shoe"), state.shoe)}</select></div>
+    ${state.mode === "two" ? `
+    <div><label>Tuck</label><div class="tuck">
+      <input type="checkbox" id="c-tuck"${state.tucked ? " checked" : ""}>
+      <span>tuck the top in</span></div></div>` : ""}
+  `;
+  el("c-ctx").onchange = e => { state.ctx = e.target.value; refresh(); };
+  el("m-two").onclick = () => { state.mode = "two"; refresh(true); };
+  el("m-one").onclick = () => { state.mode = "one"; refresh(true); };
+  if (state.mode === "two"){
+    el("c-top").onchange = e => { state.top = e.target.value; refresh(); };
+    el("c-bot").onchange = e => { state.bottom = e.target.value; refresh(); };
+    const t = el("c-tuck");
+    if (t) t.onchange = e => { state.tucked = e.target.checked; refresh(); };
+  } else {
+    el("c-dress").onchange = e => { state.dress = e.target.value; refresh(); };
+  }
+  el("c-out").onchange = e => { state.outer = e.target.value; refresh(); };
+  el("c-shoe").onchange = e => { state.shoe = e.target.value; refresh(); };
+}
+
+function buildFrame(){
+  const L = FRAME.landmarks;
+  const rows = [
+    ["height", "heightCm", 142, 186, 1, FRAME.heightCm, v => v.toFixed(0) + " cm"],
+    ["waist position", "waist", 0.34, 0.44, 0.005, L.waist, v => (v*100).toFixed(1) + "% of height"],
+    ["hip position", "hip", 0.44, 0.56, 0.005, L.hip, v => (v*100).toFixed(1) + "% of height"],
+  ];
+  el("frame").innerHTML = rows.map(([lab, key, lo, hi, st, val, f]) => `
+    <div><label for="f-${key}">${lab}</label>
+      <input type="range" id="f-${key}" min="${lo}" max="${hi}" step="${st}" value="${val}">
+      <div class="srow"><span>${lo}</span><span id="v-${key}">${f(val)}</span><span>${hi}</span></div>
+    </div>`).join("");
+  for (const [,key,,,,,f] of rows){
+    el("f-" + key).oninput = e => {
+      const v = parseFloat(e.target.value);
+      if (key === "heightCm") FRAME.heightCm = v;
+      else FRAME.landmarks[key] = v;
+      if (FRAME.landmarks.hip <= FRAME.landmarks.waist + 0.02)
+        FRAME.landmarks.hip = FRAME.landmarks.waist + 0.02;
+      el("v-" + key).textContent = f(v);
+      refresh();
+    };
+  }
+}
+
+function drawFigure(o, f){
+  const L = FRAME.landmarks, W = FRAME.widths;
+  const TOP = 26, H = 346, CX = 130;
+  const y = r => TOP + r * H;
+  const heelPx = (f.heel_cm / FRAME.heightCm) * H;
+  const sole = y(1.0), heelBottom = sole + heelPx;
+  const shoulderW = W.shoulder * H, hipW = W.hip * H;
+  const upW = Math.max(14, Math.min(150, shoulderW * f.upper_volume));
+  const loW = Math.max(14, Math.min(190, hipW * f.lower_volume));
+  const brY = f.break_ratio === null ? null : y(L.hip);
+  const splitY = f.is_column ? y(L.hip) : y(f.break_ratio * f.height_total);
+  const parts = [];
+
+  parts.push(`<line x1="${CX}" y1="${y(0)}" x2="${CX}" y2="${heelBottom}"
+    stroke="var(--rule)" stroke-width="1" stroke-dasharray="2 4"/>`);
+  for (const [k, lab] of [["shoulder","shoulder"],["waist","waist"],["hip","hip"],["knee","knee"]]){
+    parts.push(`<line x1="28" y1="${y(L[k])}" x2="238" y2="${y(L[k])}"
+      stroke="var(--rule-soft)" stroke-width="1"/>
+      <text x="30" y="${y(L[k]) - 3}" font-size="7.5" fill="var(--ink-faint)"
+      font-family="IBM Plex Mono, monospace">${lab}</text>`);
+  }
+  parts.push(`<circle cx="${CX}" cy="${y(0.062)}" r="${0.052*H}" fill="none"
+    stroke="var(--ink-soft)" stroke-width="1.4"/>`);
+  parts.push(`<rect x="${CX-upW/2}" y="${y(L.shoulder)}" width="${upW}"
+    height="${splitY - y(L.shoulder)}" fill="var(--chalk-soft)"
+    stroke="var(--chalk)" stroke-width="1.4"/>`);
+  parts.push(`<rect x="${CX-loW/2}" y="${splitY}" width="${loW}"
+    height="${sole - splitY}" fill="var(--chalk-soft)" stroke="var(--chalk)" stroke-width="1.4"/>`);
+  if (heelPx > 0.6){
+    parts.push(`<rect x="${CX-loW/6}" y="${sole}" width="${loW/3}" height="${heelPx}"
+      fill="var(--ink-soft)" opacity="0.5"/>`);
+  }
+  if (f.break_ratio !== null){
+    parts.push(`<line x1="8" y1="${splitY}" x2="246" y2="${splitY}" stroke="var(--mark)"
+      stroke-width="2" stroke-dasharray="7 3"/>
+      <text x="244" y="${splitY - 5}" font-size="9" text-anchor="end" fill="var(--mark)"
+      font-family="IBM Plex Mono, monospace" font-weight="500">break ${(f.break_ratio*100).toFixed(0)}%</text>`);
+    const bx = 252;
+    parts.push(`<line x1="${bx}" y1="${splitY}" x2="${bx}" y2="${heelBottom}"
+      stroke="var(--mark)" stroke-width="1"/>
+      <line x1="${bx-4}" y1="${splitY}" x2="${bx}" y2="${splitY}" stroke="var(--mark)" stroke-width="1"/>
+      <line x1="${bx-4}" y1="${heelBottom}" x2="${bx}" y2="${heelBottom}" stroke="var(--mark)" stroke-width="1"/>`);
+    parts.push(`<text x="${bx-7}" y="${(splitY+heelBottom)/2}" font-size="8.5"
+      text-anchor="end" fill="var(--mark)" font-family="IBM Plex Mono, monospace"
+      transform="rotate(-90 ${bx-7} ${(splitY+heelBottom)/2})">apparent ${(f.apparent_leg*100).toFixed(0)}%</text>`);
+  } else {
+    parts.push(`<text x="250" y="${y(L.waist)-5}" font-size="9" text-anchor="end"
+      fill="var(--ink-soft)" font-family="IBM Plex Mono, monospace">no break &mdash; column</text>`);
+  }
+  const ax = 13, amid = (y(L.hip) + sole) / 2;
+  parts.push(`<line x1="${ax}" y1="${y(L.hip)}" x2="${ax}" y2="${sole}"
+      stroke="var(--ink-faint)" stroke-width="1"/>
+    <line x1="${ax}" y1="${y(L.hip)}" x2="${ax+4}" y2="${y(L.hip)}" stroke="var(--ink-faint)" stroke-width="1"/>
+    <line x1="${ax}" y1="${sole}" x2="${ax+4}" y2="${sole}" stroke="var(--ink-faint)" stroke-width="1"/>
+    <text x="${ax+8}" y="${amid}" font-size="8.5" text-anchor="middle" fill="var(--ink-faint)"
+    font-family="IBM Plex Mono, monospace"
+    transform="rotate(-90 ${ax+8} ${amid})">actual ${((1-L.hip)*100).toFixed(0)}%</text>`);
+  el("fig").innerHTML = parts.join("");
+}
+
+function refresh(rebuild){
+  if (rebuild) buildControls();
+  const o = currentOutfit(), c = CTX[state.ctx];
+  const f = compute(o, FRAME);
+  const v = evaluate(o, f, FRAME, c, GOALS);
+
+  drawFigure(o, f);
+
+  const cells = [
+    ["lift", f.break_ratio === null ? "n/a" : (f.lift >= 0 ? "+" : "") + f.lift.toFixed(3),
+     "apparent leg minus actual", "lift"],
+    ["break", f.break_ratio === null ? "none" : (f.break_ratio*100).toFixed(0) + "%",
+     f.break_source.replace(/_/g," "), ""],
+    ["volume", f.upper_volume.toFixed(2) + " / " + f.lower_volume.toFixed(2), "upper / lower", ""],
+    ["contrast", f.contrast_at_break.toFixed(0), "dE at the break", ""],
+  ];
+  el("readout").innerHTML = cells.map(([k,val,n,cls]) =>
+    `<div class="cell ${cls}"><div class="k">${k}</div><div class="v">${val}</div><div class="n">${n}</div></div>`).join("");
+
+  el("vlabel").textContent = labelOf(o);
+  el("vscore").textContent = (v.total >= 0 ? "+" : "") + v.total.toFixed(2);
+  el("vscore").style.color = v.feasible ? "var(--chalk)" : "var(--mark)";
+
+  const pos = v.fired.filter(x => x.contribution > 0).sort((a,b) => b.contribution - a.contribution);
+  const neg = v.fired.filter(x => x.contribution < 0).sort((a,b) => a.contribution - b.contribution);
+  const li = (x, cls, sign) => `<li class="${cls}"><span class="c">${sign}</span>
+    <span>${x.msg}<span class="rid">${x.id}</span></span></li>`;
+  const rows = pos.map(x => li(x, "plus", (x.contribution>=0?"+":"") + x.contribution.toFixed(2)))
+    .concat(neg.map(x => li(x, "minus", x.contribution.toFixed(2))))
+    .concat(v.violations.map(x => `<li class="rej"><span class="c">reject</span>
+      <span>${x.msg}<span class="rid">${x.id}</span></span></li>`));
+  el("vrules").innerHTML = rows.length ? rows.join("")
+    : `<li><span class="c">&mdash;</span><span>No rule fires on this combination.</span></li>`;
+
+  // rise ladder
+  const base = { top: o.top, dress: o.dress, outer: o.outer, shoe: o.shoe, tucked: o.tucked };
+  const lad = byCat("bottom").map(b => {
+    const ff = compute({ top: base.top, bottom: b, dress: null, outer: base.outer,
+                         shoe: base.shoe, tucked: base.tucked }, FRAME);
+    return { b, lift: ff.lift, br: ff.break_ratio };
+  }).sort((a,z) => z.lift - a.lift);
+  const span = Math.max(0.14, ...lad.map(r => Math.abs(r.lift)));
+  el("ladder").innerHTML = lad.map(r => {
+    const zero = 50, w = (Math.abs(r.lift) / (span*2)) * 100;
+    const left = r.lift >= 0 ? zero : zero - w;
+    return `<li class="${state.mode==="two" && r.b.id===state.bottom ? "cur" : ""}">
+      <span class="nm">${r.b.name}</span>
+      <span class="track"><span class="zero" style="left:${zero}%"></span>
+        <span class="fill ${r.lift<0?"neg":""}" style="left:${left}%;width:${w}%"></span></span>
+      <span class="vv">${r.lift>=0?"+":""}${r.lift.toFixed(3)}</span></li>`;
+  }).join("");
+
+  // frame note
+  const L = FRAME.landmarks;
+  el("framenote").textContent =
+    `Actual leg ratio ${((1-L.hip)*100).toFixed(1)}% of height. `
+    + `Hip is ${(FRAME.widths.hip/FRAME.widths.shoulder).toFixed(2)}x shoulder width, which is what `
+    + `switches the balance rules on. Move the hip landmark and watch lift change without any `
+    + `garment changing.`;
+
+  // engine picks
+  const picks = best(FRAME, state.ctx, GOALS, 3, 1);
+  el("picks").innerHTML = picks.length ? picks.map((s,i) => {
+    const top2 = s.v.fired.filter(x => x.contribution>0)
+      .sort((a,b)=>b.contribution-a.contribution).slice(0,2);
+    return `<div class="pick"><div class="ph">
+      <span class="pn">${i+1}. ${labelOf(s.outfit)}</span>
+      <span class="ps">${s.v.total>=0?"+":""}${s.v.total.toFixed(2)}</span></div>
+      <div class="pm">lift ${s.f.lift>=0?"+":""}${s.f.lift.toFixed(3)} &nbsp;
+        break ${s.f.break_ratio===null?"none":(s.f.break_ratio*100).toFixed(0)+"%"} &nbsp;
+        dE ${s.f.contrast_at_break.toFixed(0)}</div>
+      ${top2.map(x => `<div class="pw">${x.msg}</div>`).join("")}
+      <button type="button" data-i="${i}">Load this</button></div>`;
+  }).join("") : `<p class="note">Nothing in the wardrobe clears this occasion's floor.</p>`;
+  el("picks").querySelectorAll("button").forEach(btn => {
+    btn.onclick = () => {
+      const s = picks[parseInt(btn.dataset.i, 10)];
+      const oo = s.outfit;
+      state.mode = oo.dress ? "one" : "two";
+      if (oo.dress) state.dress = oo.dress.id;
+      else { state.top = oo.top.id; state.bottom = oo.bottom.id; state.tucked = oo.tucked; }
+      state.outer = oo.outer ? oo.outer.id : "";
+      state.shoe = oo.shoe ? oo.shoe.id : "";
+      refresh(true);
+      document.querySelector("#readout").scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+  });
+}
+
+function showParity(){
+  let r;
+  try { r = runParity(); }
+  catch (e){
+    el("parity").innerHTML = `<b class="bad">parity check crashed</b>
+      <span class="pstate">${String(e.message || e)}</span>`;
+    return;
+  }
+  if (!r.fails.length){
+    el("parity").innerHTML = `<b class="ok">parity ${r.n}/${r.n}</b>
+      <span class="pstate">this page's JS matches the Python engine on every
+      exported case &mdash; numbers and fired rules</span>`;
+  } else {
+    const f = r.fails[0];
+    el("parity").innerHTML = `<b class="bad">parity ${r.n - r.fails.length}/${r.n}</b>
+      <span class="pstate">${r.fails.length} mismatch(es). First: ${f.row.context},
+      ${f.why.join(", ")}</span>`;
+  }
+}
+
+buildControls();
+buildFrame();
+refresh();
+showParity();
+</script>

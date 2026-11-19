@@ -1,0 +1,213 @@
+# Silhouette core rule set.
+#
+# One rule = one claim = one message. If a condition deserves a different
+# explanation depending on which way it goes, it is two rules.
+#
+# `weight` is how much the claim matters. `score` returns roughly -1..1 and
+# scales the claim by how strongly it applies. Contribution = weight * score.
+# `goal:` gates a rule on the wearer having asked for that outcome.
+#
+# Language policy (docs/language-policy.md): every message describes garments,
+# geometry and colour. None describes a body as a problem.
+
+version: 1
+
+rules:
+
+  # ---------------------------------------------------------------- proportion
+
+  - id: high_break_elongates
+    kind: soft
+    goal: elongate_lower_body
+    weight: 0.85
+    note: >
+      The core rule. A waistband above the natural waist, with nothing covering
+      it, moves the visual division into the upper third.
+    when: "f.break_ratio is not None and bottom.rise in ('high','super_high') and f.hem_drop <= 0.01 and 0.26 <= f.break_ratio <= 0.43"
+    score: "norm(f.lift, 0.0, 0.12)"
+    explain: >
+      The break sits at {break_ratio:.0%} of your height instead of near the
+      middle, so the eye reads about {lift:.0%} more length below it.
+
+  - id: untucked_hem_cancels_the_rise
+    kind: soft
+    goal: elongate_lower_body
+    weight: 0.75
+    note: >
+      The most common way the whole effect gets thrown away: buying the rise
+      and then covering it.
+    when: "bottom.rise in ('high','super_high') and f.hem_drop > 0.015"
+    score: "-norm(f.hem_drop, 0.0, 0.12)"
+    explain: >
+      The hem falls {hem_drop:.0%} of your height below the waistband, so the
+      high rise is hidden and the break drops back to {break_ratio:.0%}.
+      Tucking it, or a shorter top, is the whole difference here.
+
+  - id: heel_extends_the_leg_line
+    kind: soft
+    goal: elongate_lower_body
+    weight: 0.35
+    when: "f.heel_cm >= 3.0"
+    score: "norm(f.heel_cm, 2.0, 9.0)"
+    explain: >
+      The {heel_cm:.0f} cm heel adds to the vertical line below the hem, which
+      the eye reads as leg rather than shoe.
+
+  - id: long_outer_adds_vertical_line
+    kind: soft
+    goal: elongate_lower_body
+    weight: 0.45
+    when: "outer.length in ('midi', 'maxi')"
+    score: "1.0"
+    explain: >
+      The long open line of the {outer_name} runs past the break and carries the
+      eye vertically, which reinforces rather than interrupts the proportion.
+
+  - id: drape_reads_as_one_column
+    kind: soft
+    goal: elongate_lower_body
+    weight: 0.55
+    note: >
+      Draped and column garments have no horizontal division at all, so the
+      break-ratio rules do not apply. Absence of a break is its own strategy.
+    when: "f.is_column and dress"
+    score: "1.0"
+    explain: >
+      The {dress_name} has no horizontal break at all, so there is nothing to
+      divide the line - it reads as one continuous column.
+
+  # ------------------------------------------------------------------- balance
+
+  - id: fitted_top_counterweights_volume
+    kind: soft
+    goal: balance_lower_volume
+    weight: 0.90
+    note: Puja's own rule, stated directly.
+    when: "frame.hip_to_shoulder > 1.05 and f.lower_volume >= 1.30 and f.upper_volume <= 1.00"
+    score: "1.0"
+    explain: >
+      Volume below (x{lower_volume:.2f} body width) against a close top
+      (x{upper_volume:.2f}) keeps the silhouette legible instead of widening the
+      whole column.
+
+  - id: volume_on_volume_loses_the_line
+    kind: soft
+    goal: balance_lower_volume
+    weight: 0.85
+    when: "f.lower_volume >= 1.30 and f.upper_volume > 1.15"
+    score: "-norm(f.upper_volume, 1.15, 1.70)"
+    explain: >
+      Both halves are full - x{upper_volume:.2f} above and x{lower_volume:.2f}
+      below - so there is no close edge anywhere and the waist disappears.
+
+  - id: structure_above_balances_volume_below
+    kind: soft
+    goal: balance_lower_volume
+    weight: 0.60
+    note: >
+      Puja's subtle one: past a certain asymmetry a fitted top alone reads
+      under-weighted. The fix is structure, not fabric.
+    when: "frame.shoulder_to_hip < 0.95 and f.asymmetry < -0.95 and f.upper_structure >= 0.50"
+    score: "0.4 + 0.6 * norm(f.upper_structure, 0.50, 0.95)"
+    explain: >
+      With this much volume below, the built shoulder line up top
+      (structure {upper_structure:.2f}) adds visual weight without adding
+      width - that is what keeps it balanced rather than bottom-heavy.
+
+  - id: flat_upper_under_high_volume
+    kind: soft
+    goal: balance_lower_volume
+    weight: 0.55
+    note: >
+      The mirror of the rule above. Deliberately mild: this is advice, not a
+      veto. A plain tee with wide trousers still works; it just has headroom.
+    when: "frame.shoulder_to_hip < 0.95 and f.asymmetry < -0.95 and f.upper_structure < 0.30"
+    score: "-norm(-f.asymmetry, 0.95, 1.40)"
+    explain: >
+      This works, and it has room to go further - the top is soft
+      (structure {upper_structure:.2f}) against x{lower_volume:.2f} volume
+      below. A shoulder seam, a sleeve detail or an open jacket would add
+      weight up top without adding width.
+
+  # --------------------------------------------------------------------- colour
+
+  - id: monochrome_column_rescues_central_break
+    kind: soft
+    weight: 0.50
+    when: "f.break_ratio is not None and 0.44 <= f.break_ratio <= 0.56 and top and bottom and f.contrast_at_break < 12.0"
+    score: "1.0 - norm(f.contrast_at_break, 0.0, 12.0)"
+    explain: >
+      The break lands at {break_ratio:.0%}, near your midpoint, but top and
+      bottom are close enough in colour (dE {contrast_at_break:.0f}) that the
+      line reads continuous instead of cut.
+
+  - id: high_contrast_at_central_break
+    kind: soft
+    weight: 0.60
+    when: "f.break_ratio is not None and 0.44 <= f.break_ratio <= 0.56 and top and bottom and f.contrast_at_break >= 18.0"
+    score: "-norm(f.contrast_at_break, 18.0, 55.0)"
+    explain: >
+      The break lands at {break_ratio:.0%}, close to your midpoint, and the
+      colour change there (dE {contrast_at_break:.0f}) draws a hard line across
+      it. Closing that colour gap, or moving the break, fixes it.
+
+  - id: contrast_sharpens_a_high_break
+    kind: soft
+    weight: 0.35
+    note: >
+      The interaction that falls out of the geometry for free: contrast is not
+      good or bad on its own, it depends entirely on where the break already is.
+    when: "f.break_ratio is not None and f.break_ratio < 0.42 and top and bottom and f.contrast_at_break >= 15.0"
+    score: "norm(f.contrast_at_break, 15.0, 60.0)"
+    explain: >
+      The break is already high at {break_ratio:.0%}, so the colour change
+      there (dE {contrast_at_break:.0f}) works for you - it marks the high
+      waist rather than cutting you in half.
+
+  - id: pattern_competes_with_pattern
+    kind: soft
+    weight: 0.40
+    when: "f.pattern_count >= 2"
+    score: "-1.0"
+    explain: >
+      {pattern_count} patterned pieces compete for attention, which pulls the
+      eye around the outfit instead of along it.
+
+  - id: overdressed_for_context
+    kind: soft
+    weight: 0.50
+    note: >
+      Phase 0 finding, and the single biggest correction the spike produced.
+      A formality CEILING cannot be a hard constraint: being a little
+      overdressed is a preference, being underdressed is a failure. As a hard
+      rule it was rejecting the wearer's own signature outfit for a weekend
+      because a black wide-leg trouser scores 0.60 against a 0.52 ceiling.
+    when: "f.max_formality > ctx.formality_ceiling"
+    score: "-norm(f.max_formality - ctx.formality_ceiling, 0.0, 0.35)"
+    explain: >
+      {ctx_name} tops out around {formality_ceiling:.2f} and this reaches
+      {max_formality:.2f} - dressier than the occasion asks, which may be
+      exactly what you want.
+
+  # ---------------------------------------------------------- hard constraints
+
+  - id: meets_context_formality_floor
+    kind: hard
+    note: >
+      Only the FLOOR is hard. See overdressed_for_context below.
+    forbid: "f.min_formality < ctx.formality_floor"
+    reject: >
+      The least formal piece sits at {min_formality:.2f} and {ctx_name} needs at
+      least {formality_floor:.2f}.
+
+  - id: everything_must_be_available
+    kind: hard
+    forbid: "any(i.availability != 'clean' for i in items)"
+    reject: "Not available right now: {dirty}."
+
+  - id: within_context_warmth_band
+    kind: hard
+    forbid: "f.total_clo < ctx.clo_min or f.total_clo > ctx.clo_max"
+    reject: >
+      Total insulation {total_clo:.2f} clo is outside the {ctx_name} range
+      {clo_min:.2f}-{clo_max:.2f}.

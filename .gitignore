@@ -1,0 +1,27 @@
+# Generated pages. Rebuilt by `make build` from the templates plus the JSON
+# bundles the exporters produce, so committing them would only create noisy
+# diffs and let the published page drift from the rules it claims to use.
+demo/index.html
+app/index.html
+demo/engine-data.json
+demo/app-data.json
+
+# Labels are evidence. Bootstrap labels are NOT, and a labels file sitting in
+# the repo would be read as one. Real expert labels are exported from the app
+# and imported locally; keep them out of version control until there is a
+# deliberate decision about publishing someone's wardrobe judgements.
+evals/labels/*.jsonl
+evals/imported/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# OS
+.DS_Store
