@@ -212,14 +212,14 @@ refuses to write unless it beats the hand-set weights out of sample.
 It is validated against a **synthetic rater with two deliberately different,
 documented preferences** — because random labels would make the engine look broken
 and engine-derived labels would make it look perfect, and neither tests the harness.
-The fitter recovers both changes from labels alone:
+The fitter moves both weights toward those changes from labels alone:
 
 | rule | prior | fitted | synthetic ground truth |
 |---|---|---|---|
-| `overdressed_for_context` | 0.50 | **1.51** | 1.60 |
-| `heel_extends_the_leg_line` | 0.35 | **0.00** | 0.05 |
+| `overdressed_for_context` | 0.50 | **1.17** | 1.60 |
+| `heel_extends_the_leg_line` | 0.35 | **0.09** | 0.05 |
 
-Held-out rank correlation rises from +0.882 to +0.915. The scoreboard still refuses
+Held-out rank correlation rises from +0.896 to +0.908. The scoreboard still refuses
 to draw quality conclusions from those labels, and says so on every run — see
 [ADR 0004](docs/adr/0004-eval-harness.md).
 
