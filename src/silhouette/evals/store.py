@@ -57,11 +57,16 @@ class LabelStore:
         return list(by_key.values())
 
     def repeats(self, source: str | None = None) -> list[tuple[Label, Label]]:
-        """Pairs of independent ratings of the same outfit, for self-agreement."""
+        """Pairs of independent ratings of the same outfit by the same person,
+        for self-agreement.
+
+        Grouped by labeller as well as outfit: two stylists rating one outfit
+        is agreement BETWEEN raters, a different number, and mixing it in would
+        quietly lower the ceiling everything else is measured against."""
         pool = self.all() if source is None else [l for l in self.all() if l.source == source]
-        groups: dict[str, list[Label]] = defaultdict(list)
+        groups: dict[tuple[str, str], list[Label]] = defaultdict(list)
         for l in pool:
-            groups[l.outfit_key].append(l)
+            groups[(l.labeller, l.outfit_key)].append(l)
         pairs: list[tuple[Label, Label]] = []
         for group in groups.values():
             if len(group) < 2:
@@ -69,6 +74,14 @@ class LabelStore:
             group.sort(key=lambda l: l.created_at)
             pairs.append((group[0], group[-1]))
         return pairs
+
+    def by_labeller(self, source: str | None = None) -> dict[str, int]:
+        """How many labels each rater made."""
+        pool = self.all() if source is None else [l for l in self.all() if l.source == source]
+        counts: dict[str, int] = defaultdict(int)
+        for l in pool:
+            counts[l.labeller] += 1
+        return dict(counts)
 
     def labelled_keys(self, source: str | None = "expert") -> set[str]:
         """Outfits already rated. Expert labels by default, so the labelling

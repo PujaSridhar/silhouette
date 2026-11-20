@@ -63,15 +63,17 @@ suggestions that get a yes.
 
 ## Labelling protocol
 
-1. Rate in batches of no more than 50. Fatigue shows up as regression to 3.
-2. The Style CV and the context are visible; the engine's score and its
+1. Enter your own name on the Rate tab before the first rating. Every label is
+   saved under it, which is what keeps several stylists' ratings apart.
+2. Rate in batches of no more than 50. Fatigue shows up as regression to 3.
+3. The Style CV and the context are visible; the engine's score and its
    explanations are **hidden**. Seeing the score anchors the rating and
    destroys the independence the whole harness depends on.
-3. Re-label 10% of outfits in a later session without seeing the earlier
+4. Re-label 10% of outfits in a later session without seeing the earlier
    rating. That gives **self-agreement**, which is the ceiling on how well any
    model can possibly do. A model scoring above your own self-agreement is
    overfitting, not succeeding.
-4. Record a one-line note on anything rated 1, 2 or 5. Those notes are where
+5. Record a one-line note on anything rated 1, 2 or 5. Those notes are where
    new rules come from.
 
 ## What gets reported
