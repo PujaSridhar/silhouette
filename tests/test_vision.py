@@ -392,3 +392,76 @@ def test_mask_agreement_is_one_for_identical_mask_sets(tmp_path, cv, wardrobe):
     res = mask_agreement(photos, wardrobe)
     assert set(res) == {"top", "bottom"}
     assert all(r["mean_iou"] == 1.0 for r in res.values())
+
+
+# ------------------------------------------------------- photo preparation
+
+_HAVE_PIL = importlib.util.find_spec("PIL") is not None
+
+
+@pytest.mark.skipif(not _HAVE_PIL, reason="needs Pillow")
+def test_open_rgb_applies_exif_orientation(tmp_path):
+    """A sideways phone photo (landscape pixels + EXIF Orientation=6) must load
+    upright as portrait, matching Preview and avoiding sideways crown/sole."""
+    from PIL import Image
+
+    from silhouette.vision.photos import open_rgb
+    p = tmp_path / "rotated.jpg"
+    im = Image.new("RGB", (40, 20), color=(10, 20, 30))
+    exif = im.getexif()
+    exif[0x0112] = 6  # Rotate 90 CW -> 20 wide x 40 tall
+    im.save(p, exif=exif)
+    arr = open_rgb(p)
+    assert arr.shape == (40, 20, 3)
+
+
+def test_prep_photos_unzips_converts_disambiguates_and_preserves_manifest(tmp_path, monkeypatch):
+    """prep_photos drops Live Photo .mov files, never clobbers stem collisions,
+    converts HEIC, and preserves existing manifest annotations on re-run."""
+    import zipfile
+
+    from silhouette.vision import photos as ph
+
+    images = tmp_path / "images"
+    images.mkdir()
+    # Existing photo + pre-filled manifest row
+    (images / "FullSizeRender.jpg").write_bytes(b"existing-jpg")
+    (images / "Photo.heic").write_bytes(b"loose-heic")
+    (tmp_path / "manifest.csv").write_text(
+        "photo,garments,crown_y,sole_y,heel_cm\n"
+        "FullSizeRender.jpg,top_tee_blk;bot_wide_blk,100,900,2.0\n"
+    )
+    # Zip containing a colliding HEIC stem + a .mov companion + __MACOSX junk
+    with zipfile.ZipFile(images / "Google.zip", "w") as zf:
+        zf.writestr("FullSizeRender.heic", b"zipped-heic")
+        zf.writestr("FullSizeRender.mov", b"live-photo-video")
+        zf.writestr("__MACOSX/._FullSizeRender.heic", b"mac-junk")
+
+    def fake_convert(src, dst):
+        Path(dst).write_bytes(b"converted:" + Path(src).read_bytes())
+
+    monkeypatch.setattr(ph, "convert_heic", fake_convert)
+
+    res = ph.prep_photos(tmp_path)
+    assert res["zips_removed"] == 1
+    assert res["unzipped"] == 1
+    assert res["skipped_zip_entries"] == 2
+    assert res["converted_heic"] == 2
+    assert res["added_to_manifest"] == 2
+    assert res["total_photos"] == 3
+
+    names = sorted(p.name for p in images.iterdir())
+    assert names == ["FullSizeRender.jpg", "FullSizeRender_2.jpg", "Photo.jpg"]
+    assert (images / "FullSizeRender.jpg").read_bytes() == b"existing-jpg"
+    assert (images / "FullSizeRender_2.jpg").read_bytes() == b"converted:zipped-heic"
+
+    rows = list(csv.DictReader(open(tmp_path / "manifest.csv")))
+    by_photo = {r["photo"]: r for r in rows}
+    assert by_photo["FullSizeRender.jpg"]["garments"] == "top_tee_blk;bot_wide_blk"
+    assert by_photo["FullSizeRender.jpg"]["crown_y"] == "100"
+    assert set(by_photo) == {"FullSizeRender.jpg", "FullSizeRender_2.jpg", "Photo.jpg"}
+
+    # Idempotent re-run adds nothing and loses nothing
+    res2 = ph.prep_photos(tmp_path)
+    assert res2["added_to_manifest"] == 0
+    assert len(list(csv.DictReader(open(tmp_path / "manifest.csv")))) == 3
