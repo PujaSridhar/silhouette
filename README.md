@@ -163,8 +163,8 @@ Phase 0 exists to answer one question before any GPU money is spent: **does the
 engine produce outfits a stylist would actually use?**
 
 Thirty hand-annotated garments, 17 rules, an exact solver, **no machine learning
-anywhere**. 97 tests, including a must-fire fixture for every rule and a
-coverage test that fails when a rule is added without one.
+anywhere**. A test suite (`make test`) with a must-fire fixture for every rule
+and a coverage test that fails when a rule is added without one.
 
 **Result: pass on reasoning.** The engine states the stylist's two rules back to
 her — including a nuance she mentioned only in passing ("balance it, but adding
