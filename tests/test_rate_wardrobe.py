@@ -33,8 +33,9 @@ def tool():
 
 
 def _write(path, rows):
+    # lineterminator="\n" to match the repo's own CSVs; csv defaults to \r\n.
     with open(path, "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=COLUMNS)
+        w = csv.DictWriter(fh, fieldnames=COLUMNS, lineterminator="\n")
         w.writeheader()
         for r in rows:
             w.writerow({c: r.get(c, "") for c in COLUMNS})
@@ -223,3 +224,17 @@ def test_ordering_loses_nobody(tool):
     real = [r["id"] for r in csv.DictReader(open(ROOT / "data" / "wardrobe_real.csv"))]
     assert sorted(ids) == sorted(real)
     assert len(ids) == len(set(ids))
+
+
+def test_saving_does_not_rewrite_every_line_of_the_file(tmp_path, tool):
+    """csv defaults to \\r\\n, which turns a one-row edit into a whole-file diff."""
+    p = tmp_path / "w.csv"
+    _write(p, [_row("a"), _row("b"), _row("c")])
+    before = p.read_bytes()
+    assert b"\r\n" not in before
+    tool.REAL = p
+    tool.save("b", {"volume": "1.2"})
+    after = p.read_bytes()
+    assert b"\r\n" not in after, "the save converted the file to CRLF"
+    changed = [x for x, y in zip(after.split(b"\n"), before.split(b"\n")) if x != y]
+    assert len(changed) == 1, f"one row was edited but {len(changed)} lines changed"

@@ -180,7 +180,9 @@ def save(gid: str, values: dict) -> dict:
         hit.update({k: str(v) for k, v in values.items()})
         tmp = REAL.with_suffix(".csv.tmp")
         with open(tmp, "w", newline="") as fh:
-            w = csv.DictWriter(fh, fieldnames=fields)
+            # csv defaults to \r\n, which rewrites every line of the file on
+            # the first save and buries a 13-row change in a 44-row diff.
+            w = csv.DictWriter(fh, fieldnames=fields, lineterminator="\n")
             w.writeheader()
             w.writerows(rows)
         tmp.replace(REAL)          # atomic, so an interrupted save cannot truncate
