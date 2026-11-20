@@ -43,9 +43,10 @@ whether the *harness* works.
 So the synthetic rater uses the engine's own rule scores with **two weights
 deliberately changed**, in the direction finding 10 hypothesised, and that is
 stated in the module and the docs. A working harness must recover both from the
-labels alone. It does — `heel_extends_the_leg_line` 0.35 → 0.00 against a ground
-truth of 0.05, and `overdressed_for_context` 0.50 → 1.51 against 1.60, with
-held-out rank correlation rising from +0.882 to +0.915.
+labels alone. It moves both the right way — `heel_extends_the_leg_line` 0.35 →
+0.09 against a ground truth of 0.05, and `overdressed_for_context` 0.50 → 1.17
+against 1.60, with held-out rank correlation rising from +0.896 to +0.908
+(180 bootstrap labels, seed 7, 18 rules).
 
 That is a falsifiable test of sampling, design matrix, fitting and
 cross-validation at once. The scoreboard still refuses to draw quality
