@@ -17,6 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from export_demo_data import convert_template, drape_parity_picks  # noqa: E402
+from silhouette.evals.raters import inter_rater_agreement  # noqa: E402
+from silhouette.evals.sampling import (  # noqa: E402
+    SHARED_N, SHARED_SEED, shared_hash_key, shared_set)
+from silhouette.evals.schema import label_from_dict  # noqa: E402
 from silhouette.models import load_style_cv, load_wardrobe  # noqa: E402
 from silhouette.rules import load_rules                  # noqa: E402
 from silhouette.solver import candidates, score          # noqa: E402
@@ -99,7 +103,51 @@ def main() -> int:
         add(s, name)
     n_drape = len(fixture) - n_plain
 
+    # The shared set: the same outfits for every rater. The app must pick the
+    # same keys as sampling.shared_set or stylists rating in the app and the
+    # eval would disagree about which outfits are shared. Checked on the whole
+    # sample wardrobe, and on a small draped one so the drape part of the key
+    # is covered too (all of it with drapes would multiply the build time).
+    drape_kit = {"top_kurta_indigo", "top_cami_silk_blk", "top_tee_blk", "bot_salwar_white",
+                 "bot_palazzo_floral", "bot_wide_blk", "dress_saree_teal",
+                 "dress_anarkali_maroon", "out_blazer_blk", "shoe_heel_blk_block",
+                 "shoe_sandal_tan_flat"}
+    small = [g for g in wardrobe if g.id in drape_kit] + drapes
+    shared_cases = []
+    for gs in (wardrobe, small):
+        shared_cases.append({
+            "garments": [g.id for g in gs],
+            "keys": [shared_hash_key(t.outfit, t.context) for t in shared_set(gs, cv, rules)],
+        })
+    shared_garments = {g.id: asdict(g) for g in wardrobe + drapes}
+
+    # Agreement between raters, on a fixed handful of ratings: three raters,
+    # a repeat (which must not count twice) and an outfit only one rated
+    # (which must drop out).
+    def lab(i, who, key, overall, wear, when):
+        top, bot, shoe, ctx = key
+        return {"id": f"ag{i}", "outfit": {"top": top, "bottom": bot, "dress": None,
+                "outer": None, "shoe": shoe, "drape": None, "tucked": False},
+                "context": ctx, "overall": overall, "ratings": None, "would_wear": wear,
+                "labeller": who, "source": "expert", "note": "", "engine_version": 1,
+                "created_at": f"2026-11-20T10:{when:02d}:00+00:00"}
+    u = [("top_tee_blk", "bot_wide_blk", "shoe_sneaker_white", "weekend"),
+         ("top_kurta_indigo", "bot_salwar_white", "shoe_sandal_tan_flat", "dinner"),
+         ("top_cami_silk_blk", "bot_skirt_pencil_blk", "shoe_heel_blk_block", "office"),
+         ("top_hoodie_oversized_grey", "bot_jean_low_wash", "shoe_sneaker_white", "campus"),
+         ("top_shirt_linen_white", "bot_wide_cream", "shoe_heel_blk_block", "office")]
+    ag_labels = [
+        lab(1, "asha", u[0], 4, True, 1), lab(2, "bea", u[0], 5, True, 2),
+        lab(3, "chen", u[0], 4, True, 3), lab(4, "asha", u[1], 2, False, 4),
+        lab(5, "bea", u[1], 3, False, 5), lab(6, "asha", u[2], 3, True, 6),
+        lab(7, "chen", u[2], 1, False, 7), lab(8, "bea", u[3], 2, False, 8),
+        lab(9, "chen", u[3], 2, True, 9), lab(10, "asha", u[4], 5, True, 10),
+        lab(11, "asha", u[0], 1, False, 30),   # asha's repeat: ignored here
+    ]
+    ir = inter_rater_agreement([label_from_dict(d) for d in ag_labels])
+
     bundle = {
+        "shared": {"n": SHARED_N, "seed": SHARED_SEED},
         "rules": [
             {"id": r.id, "kind": r.kind, "weight": r.weight, "goal": r.goal,
              "explain": convert_template(r.explain) if r.explain else None,
@@ -113,6 +161,9 @@ def main() -> int:
             "contexts": {n: asdict(c) for n, c in cv.contexts.items()},
             "garments": [asdict(g) for g in wardrobe + drapes if g.id in used_ids],
             "cases": fixture,
+            "shared": {"garments": shared_garments, "cases": shared_cases},
+            "agreement": {"labels": ag_labels, "alpha": ir.alpha, "n_units": ir.n_units,
+                          "would_wear": ir.would_wear_agree},
         },
     }
 
@@ -122,6 +173,8 @@ def main() -> int:
     print(f"wrote {out.relative_to(ROOT)} ({out.stat().st_size // 1024} KB)")
     print(f"  rules {len(rules)}  parity cases {len(fixture)} ({n_drape} with a drape)  "
           f"garments referenced {len(used_ids)}")
+    print(f"  shared set {SHARED_N}: cases {len(shared_cases)}  agreement alpha {ir.alpha:+.3f} "
+          f"on {ir.n_units} outfits")
     print(f"  rules exercised: {len(rule_seen) - len(uncovered)}/{len(rule_seen)}"
           + (f"  (not: {', '.join(uncovered)})" if uncovered else ""))
     return 0

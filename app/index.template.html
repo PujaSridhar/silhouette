@@ -629,7 +629,7 @@ const Store={
         const meta=snap.exists?snap.data():{};
         const cs=await this.profile.collection("clients").get();
         const clients=cs.docs.map(d=>d.data());
-        const garments={},labels={};
+        const garments={},labels={},cantJudge={};
         for(const c of clients){
           const gs=await this.profile.collection("clients").doc(c.id)
             .collection("garments").get();
@@ -637,14 +637,18 @@ const Store={
           const ls=await this.profile.collection("clients").doc(c.id)
             .collection("labels").get();
           labels[c.id]=ls.docs.map(d=>d.data());
+          let ms=[];
+          try{ms=(await this.profile.collection("clients").doc(c.id)
+            .collection("cantjudge").get()).docs.map(d=>d.data());}catch(e){}
+          cantJudge[c.id]=ms;
         }
-        return {clients,garments,labels,
+        return {clients,garments,labels,cantJudge,
           activeId:meta.activeId||(clients[0]&&clients[0].id)||null};
       }catch(e){this.mode=this.mode==="cloud"?"local":this.mode;}
     }
     const d=this._local();
     return {clients:d.clients||[],garments:d.garments||{},labels:d.labels||{},
-      activeId:d.activeId||null};
+      cantJudge:d.cantJudge||{},activeId:d.activeId||null};
   },
   async saveClient(c){
     if(this.mode==="cloud"){
@@ -684,6 +688,18 @@ const Store={
     d.labels[cid]=(d.labels[cid]||[]).filter(x=>x.id!==l.id).concat([l]);
     this._saveLocal(d);return this.mode!=="memory";
   },
+  /* A "couldn't judge" mark. Its own collection, never the labels one, so
+     nothing that reads labels can take it for a rating. */
+  async saveCantJudge(cid,m){
+    if(this.mode==="cloud"){
+      try{await this.profile.collection("clients").doc(cid).collection("cantjudge")
+        .doc(m.id).set(m);return true}
+      catch(e){this.mode="local"}
+    }
+    const d=this._local();d.cantJudge=d.cantJudge||{};
+    d.cantJudge[cid]=(d.cantJudge[cid]||[]).filter(x=>x.id!==m.id).concat([m]);
+    this._saveLocal(d);return this.mode!=="memory";
+  },
   async setActive(id){
     if(this.mode==="cloud"){
       try{await this.profile.set({activeId:id});return true}catch(e){this.mode="local"}
@@ -702,7 +718,7 @@ function loadRater(){try{return localStorage.getItem(RATERKEY)||""}catch(e){retu
 function saveRater(v){try{localStorage.setItem(RATERKEY,v)}catch(e){}}
 
 /* ====================== STATE / VIEWS =============================== */
-const S={clients:[],garments:{},labels:{},activeId:null,tab:"wardrobe",
+const S={clients:[],garments:{},labels:{},cantJudge:{},activeId:null,tab:"wardrobe",
   rateTask:null,rateQueue:[],rateMode:"quick",rateRepeatServed:false,rater:loadRater(),
   rating:{proportion:null,balance:null,formality:null,colour:null,cohesion:null,
     overall:null,would:null,note:""},exportText:null,
@@ -843,6 +859,101 @@ function rebuildOutfit(rec){
   return {top:by(rec.top),bottom:by(rec.bottom),dress:by(rec.dress),
     outer:by(rec.outer),shoe:by(rec.shoe),drape:by(rec.drape),tucked:!!rec.tucked};
 }
+const MARKS=()=>(S.cantJudge[S.activeId]||[]);
+
+/* ---- the shared set ----
+   The same outfits for every rater, so their judgements overlap and
+   agreement between stylists can be measured. Port of
+   evals/sampling.shared_set: a function of the garment ids, the frame, the
+   goals and a fixed seed, never of what anyone has rated, so two stylists on
+   the same wardrobe get the same set in any order. Spread across the five
+   score quintiles, because agreement measured only on so-so outfits is
+   flattered by the narrow range. */
+const SHARED=BUNDLE.shared||{n:12,seed:"silhouette.shared.v1"};
+function fnv1a32(str){
+  let h=0x811c9dc5;
+  for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0;}
+  return h>>>0;
+}
+function sharedSet(gs,frame,contexts,goals,n,seed){
+  const pool=[];
+  const outfits=enumerate(gs,frame);
+  for(const ctx of contexts)for(const o of outfits){
+    const sc=scoreOutfit(o,frame,ctx,goals);
+    if(!sc.v.feasible)continue;
+    pool.push({o,ctx:ctx.name,k:outfitKeyOf(o,ctx.name),
+      t:Math.round(sc.v.total*1e6)/1e6});
+  }
+  if(!pool.length||n<=0)return [];
+  let lo=Infinity,hi=-Infinity;
+  for(const p of pool){if(p.t<lo)lo=p.t;if(p.t>hi)hi=p.t;}
+  const strat=t=>hi<=lo?0:Math.min(4,Math.max(0,Math.floor(((t-lo)/(hi-lo))*5)));
+  const strata=[[],[],[],[],[]];
+  for(const p of pool){p.h=fnv1a32(seed+"|"+p.k);strata[strat(p.t)].push(p);}
+  for(const st of strata)st.sort((a,b)=>(a.h-b.h)||(a.k<b.k?-1:a.k>b.k?1:0));
+  const chosen=[];
+  for(let d=0;chosen.length<n&&strata.some(st=>d<st.length);d++)
+    for(const st of strata)if(d<st.length&&chosen.length<n)chosen.push(st[d]);
+  return chosen;
+}
+function sharedForActive(){
+  const c=active(),gs=wardrobe();
+  if(!c||!gs.length)return [];
+  const key=c.id+"|"+gs.map(g=>g.id).sort().join(",")+"|"+c.goals.join(",")+"|"
+    +JSON.stringify(c.frame);
+  if(S.sharedCache&&S.sharedCache.key===key)return S.sharedCache.set;
+  const set=sharedSet(gs,c.frame,CONTEXTS,c.goals,SHARED.n,SHARED.seed);
+  S.sharedCache={key,set};
+  return set;
+}
+/* What this rater has already dealt with: rated, or marked couldn't judge. */
+function doneBy(who){
+  const s=new Set();
+  for(const l of LABELS())if(l.labeller===who)s.add(labelKeyOf(l));
+  for(const m of MARKS())if(m.labeller===who)s.add(labelKeyOf(m));
+  return s;
+}
+
+/* ---- agreement between raters ----
+   Port of evals/raters.inter_rater_agreement. Krippendorff's alpha on
+   overall, interval metric, over outfits two or more raters rated; each
+   rater's first rating only, so a repeat is not counted as a second rater. */
+function alphaInterval(units){
+  const pu=units.filter(u=>u.length>=2);
+  const n=pu.reduce((a,u)=>a+u.length,0);
+  if(n<2)return NaN;
+  let dO=0;
+  for(const u of pu){
+    let sum=0;
+    for(let i=0;i<u.length;i++)for(let j=0;j<u.length;j++)if(i!==j)sum+=(u[i]-u[j])**2;
+    dO+=sum/(u.length-1);
+  }
+  dO/=n;
+  const v=[].concat(...pu);
+  let sum=0;
+  for(let i=0;i<v.length;i++)for(let j=0;j<v.length;j++)if(i!==j)sum+=(v[i]-v[j])**2;
+  const dE=sum/(n*(n-1));
+  return dE===0?NaN:1-dO/dE;
+}
+function interRater(ls){
+  const raters=[...new Set(ls.map(l=>l.labeller||"unknown"))].sort();
+  const units={};
+  for(const l of ls.slice().sort((a,b)=>(a.created_at<b.created_at?-1:a.created_at>b.created_at?1:0))){
+    const k=labelKeyOf(l),who=l.labeller||"unknown";
+    units[k]=units[k]||{};
+    if(!(who in units[k]))units[k][who]=l;
+  }
+  const shared=Object.values(units).filter(u=>Object.keys(u).length>=2);
+  const alpha=alphaInterval(shared.map(u=>Object.values(u).map(l=>l.overall)));
+  let agree=0,total=0;
+  for(const u of shared){
+    const xs=Object.values(u);
+    for(let i=0;i<xs.length;i++)for(let j=i+1;j<xs.length;j++){
+      total++;if(!!xs[i].would_wear===!!xs[j].would_wear)agree++;}
+  }
+  return {raters,nUnits:shared.length,alpha,wouldWear:total?agree/total:NaN};
+}
+
 function ruleCountsFromLabels(){
   const c=active(),counts={};
   for(const r of RULES)counts[r.id]=0;
@@ -857,7 +968,12 @@ function ruleCountsFromLabels(){
 function fillRateQueue(n){
   const c=active(),gs=wardrobe();
   if(!c||!gs.length)return [];
+  // Skip anything anyone has rated, the shared set (it is served on its own
+  // schedule, to everyone) and whatever this rater could not judge.
   const done=new Set(LABELS().map(labelKeyOf));
+  for(const p of sharedForActive())done.add(p.k);
+  const who=raterName();
+  for(const m of MARKS())if(m.labeller===who)done.add(labelKeyOf(m));
   const pool=[];
   const outfits=enumerate(gs,c.frame);
   for(const x of CONTEXTS){
@@ -905,6 +1021,7 @@ function nextRateTask(){
   // Repeats come from THIS rater's own labels: a second stylist rating the
   // first one's outfit measures agreement between them, not with themselves.
   const who=raterName();
+  S.rateTaskFor=who;
   const ls=who?LABELS().filter(l=>l.labeller===who):[];
   if(ls.length>=8&&ls.length%8===0&&!S.rateRepeatServed){
     const seen=new Set(),firsts=[];
@@ -922,9 +1039,20 @@ function nextRateTask(){
       if(itemsOf(o).length){S.rateRepeatServed=true;return {o,ctx:l.context,repeat:true};}
     }
   }
+  // Every third outfit, the next shared one this rater has not done yet, so
+  // a stylist meets all of the shared set inside their first few dozen
+  // without rating it as one block. Needs a name: the set is tracked per rater.
+  if(who){
+    const mine=doneBy(who);
+    const left=sharedForActive().filter(p=>!mine.has(p.k));
+    if(left.length&&(mine.size%3===1||!S.rateQueue.length&&!fillRateQueue(1).length)){
+      const p=left[0];
+      return {o:p.o,ctx:p.ctx,repeat:false,shared:true};
+    }
+  }
   if(!S.rateQueue.length)S.rateQueue=fillRateQueue(12);
   const t=S.rateQueue.shift();
-  return t?{o:t.o,ctx:t.ctx,repeat:false}:null;
+  return t?{o:t.o,ctx:t.ctx,repeat:false,shared:false}:null;
 }
 function reachableRules(){
   // Which rules CAN fire for this person and this wardrobe at all. A rule
@@ -970,7 +1098,11 @@ function labelStats(){
   const reach=reachableRules();
   const unlabelled=soft.filter(id=>!rc[id]&&reach.has(id));
   const inapplicable=soft.filter(id=>!reach.has(id));
+  const who=raterName();
   return {n:ls.length,unlabelled,inapplicable,
+    ir:interRater(ls),cantJudge:MARKS().length,
+    sharedDone:who?(d=>sharedForActive().filter(p=>d.has(p.k)).length)(doneBy(who)):0,
+    sharedN:sharedForActive().length,
     rho:totals.length>=3?spearman(totals,overalls):NaN,
     wear:ls.length?ls.filter(l=>l.would_wear).length/ls.length:0,
     selfQwk:pairs.length>=2?qwk(pairs.map(p=>p[0]),pairs.map(p=>p[1])):NaN,
@@ -1217,10 +1349,13 @@ function viewRate(){
       <div class="dim"><span class="dl">Would you send someone out in it?<span class="dh">This is the headline metric.</span></span>
         <span class="scale yn"><button type="button" data-would="1" aria-pressed="${r.would===true}">Yes</button><button type="button" data-would="0" aria-pressed="${r.would===false}">No</button></span></div>
       <div style="margin-top:12px"><label for="rnote">Note (optional)</label>
-        <input type="text" id="rnote" value="${esc(r.note)}" placeholder="Anything the engine missed - this is where new rules come from" style="width:100%"></div>
+        <input type="text" id="rnote" value="${esc(r.note)}" placeholder="Anything the engine missed, or why you can't judge it" style="width:100%"></div>
       <div class="row" style="margin-top:14px">
         <button class="btn" type="button" id="rateSave" ${ready?"":"disabled"}>Save &amp; next</button>
-        <button class="btn quiet" type="button" id="rateSkip">Skip</button></div>
+        <button class="btn quiet" type="button" id="rateSkip">Can&rsquo;t judge</button></div>
+      <p class="note" style="margin-top:8px">${raterName()
+        ?`Can&rsquo;t judge it from this card? Say why in the note if you can, then press Can&rsquo;t judge. It is saved as a mark, not a score.`
+        :`Add your name above and Can&rsquo;t judge is saved as a mark, so unclear outfits show up. Without a name it just skips.`}</p>
     </div>`;
   }
 
@@ -1232,7 +1367,10 @@ function viewRate(){
       <div class="cell"><div class="k">rank agreement</div><div class="v">${isNaN(st.rho)?"&mdash;":(st.rho>=0?"+":"")+st.rho.toFixed(2)}</div><div class="n">engine vs you</div></div>
       <div class="cell"><div class="k">would wear</div><div class="v">${(st.wear*100).toFixed(0)}%</div><div class="n">of rated outfits</div></div>
       <div class="cell"><div class="k">self-agreement</div><div class="v">${isNaN(st.selfQwk)?"&mdash;":st.selfQwk.toFixed(2)}</div><div class="n">${st.repeats} repeat${st.repeats===1?"":"s"} &mdash; the ceiling</div></div>
+      <div class="cell"><div class="k">between stylists</div><div class="v">${isNaN(st.ir.alpha)?"&mdash;":(st.ir.alpha>=0?"+":"")+st.ir.alpha.toFixed(2)}</div><div class="n">${st.ir.raters.length<2?"needs a second rater":`alpha, ${st.ir.nUnits} shared outfit${st.ir.nUnits===1?"":"s"}`}</div></div>
+      <div class="cell"><div class="k">can&rsquo;t judge</div><div class="v">${st.cantJudge}</div><div class="n">marks, not scores</div></div>
     </div>
+    ${raterName()&&st.sharedN?`<p class="note" style="margin-top:8px"><b>Shared set: ${st.sharedDone} of ${st.sharedN} done by ${esc(raterName())}.</b> Every stylist gets these same ${st.sharedN} outfits, mixed in with the rest, so their scores can be compared.</p>`:""}
     <p class="note">${conclusive
       ? `<b>${n} labels.</b> Rank agreement is the number that matters: it says whether the engine orders outfits the way you do.`
       : `<b>Indicative only.</b> A rank correlation on ${n} labels has a confidence interval wide enough to contain both &ldquo;excellent&rdquo; and &ldquo;useless&rdquo;. ${TARGET - n} to go.`}
@@ -1254,7 +1392,7 @@ function viewRate(){
       <p>Computed from your labels, with the sample size attached.</p></div>
     ${stats}
     <div class="row" style="margin-top:16px">
-      <button class="btn ghost" type="button" id="exportLabels" ${n?"":"disabled"}>Export for the fitter</button>
+      <button class="btn ghost" type="button" id="exportLabels" ${n||st.cantJudge?"":"disabled"}>Export for the fitter</button>
       ${S.exportText?`<span class="faint" style="font-size:.76rem">copied &mdash; paste into a file and run <code>silhouette import-app</code></span>`:""}
     </div>
     ${S.exportText?`<textarea id="exportBox" readonly style="width:100%;height:120px;margin-top:10px;font-family:var(--f-mono);font-size:.64rem;background:var(--sunk);color:var(--ink);border:1px solid var(--rule)">${esc(S.exportText)}</textarea>`:""}`;
@@ -1266,7 +1404,7 @@ function buildExport(){
       widths:c.frame.widths,goals:c.goals,
       contexts:CONTEXTS.map(x=>({name:x.name,formality_floor:x.formality_floor,
         formality_ceiling:x.formality_ceiling,clo_min:x.clo_min,clo_max:x.clo_max}))},
-    garments:wardrobe(),labels:LABELS()},null,1);
+    garments:wardrobe(),labels:LABELS(),cantJudge:MARKS()},null,1);
 }
 
 /* ---- profile ---- */
@@ -1380,6 +1518,21 @@ document.addEventListener("click",async(e)=>{
   if(d.rate){S.rating[d.rate]=+d.val;render();return;}
   if(d.would){S.rating.would=(d.would==="1");render();return;}
   if(t.id==="rateSkip"){
+    // Can't judge: with a name, saved as a mark in its own collection (never
+    // a label), so outfits stylists find unclear can be found later.
+    const c=active(),task=S.rateTask,who=raterName();
+    if(c&&task&&who){
+      const o=task.o;
+      const mark={id:uid("cj"),
+        outfit:{top:o.top?o.top.id:null,bottom:o.bottom?o.bottom.id:null,
+          dress:o.dress?o.dress.id:null,outer:o.outer?o.outer.id:null,
+          shoe:o.shoe?o.shoe.id:null,drape:o.drape?o.drape.id:null,tucked:!!o.tucked},
+        context:task.ctx,labeller:who,reason:(S.rating.note||"").trim(),
+        engine_version:1,created_at:new Date().toISOString()};
+      S.cantJudge[c.id]=(S.cantJudge[c.id]||[]).concat([mark]);
+      S.exportText=null;
+      Store.saveCantJudge(c.id,mark).then(setSaveState);
+    }
     S.rateTask=nextRateTask();
     S.rating={proportion:null,balance:null,formality:null,colour:null,cohesion:null,
       overall:null,would:null,note:""};
@@ -1440,8 +1593,15 @@ document.addEventListener("click",async(e)=>{
 });
 document.addEventListener("change",async(e)=>{
   const t=e.target;
-  if(t.id==="whoSel"){S.activeId=t.value;S.gaps=null;S.rateTask=null;S.rateQueue=[];S.exportText=null;S.manual={top:null,bottom:null,dress:null,outer:null,shoe:null,drape:null,tucked:false};render();await Store.setActive(t.value);return;}
-  if(t.id==="raterName"){S.rater=t.value.trim();saveRater(S.rater);render();return;}
+  if(t.id==="whoSel"){S.activeId=t.value;S.gaps=null;S.rateTask=null;S.rateQueue=[];S.sharedCache=null;S.exportText=null;S.manual={top:null,bottom:null,dress:null,outer:null,shoe:null,drape:null,tucked:false};render();await Store.setActive(t.value);return;}
+  if(t.id==="raterName"){
+    S.rater=t.value.trim();saveRater(S.rater);
+    // A different rater has a different place in the shared set, so draw
+    // their next outfit afresh, unless they have already started rating it.
+    const r=S.rating,untouched=["proportion","balance","formality","colour","cohesion",
+      "overall","would"].every(k=>r[k]===null);
+    if(S.rateTaskFor!==raterName()&&untouched){S.rateTask=null;S.rateQueue=[];}
+    render();return;}
   if(t.dataset.slot){S.manual[t.dataset.slot]=t.value||null;render();return;}
   if(t.id==="tuckBox"){S.manual.tucked=t.checked;render();return;}
   if(t.dataset.goal){
@@ -1503,7 +1663,26 @@ function runParity(){
     if(s.v.violations.map(x=>x.id).sort().join(",")!==row.vi.join(","))why.push("violated");
     if(why.length)fails.push({c:row.c,why});else pass++;
   }
-  return {n:P.cases.length,pass,fails};
+  let n=P.cases.length;
+  // The shared set must pick the same outfits as evals/sampling.shared_set,
+  // or stylists rating here and the eval would disagree on which are shared.
+  if(P.shared){
+    const ctxs=Object.entries(P.contexts).map(([k,c])=>Object.assign({},c,{name:k}));
+    for(const sc of P.shared.cases){
+      n++;
+      const gs=sc.garments.map(id=>P.shared.garments[id]);
+      const got=sharedSet(gs,P.frame,ctxs,P.goals,SHARED.n,SHARED.seed).map(p=>p.k);
+      if(got.join("\n")===sc.keys.join("\n"))pass++;
+      else fails.push({c:"shared set",why:["shared"]});
+    }
+  }
+  if(P.agreement){
+    n++;
+    const A=P.agreement,ir=interRater(A.labels);
+    if(ir.nUnits===A.n_units&&near(ir.alpha,A.alpha,1e-9)&&near(ir.wouldWear,A.would_wear,1e-9))pass++;
+    else fails.push({c:"agreement",why:["agreement"]});
+  }
+  return {n,pass,fails};
 }
 
 /* ---- boot ---- */
@@ -1514,7 +1693,7 @@ function runParity(){
       new Promise(r=>setTimeout(()=>r(null),10000))]);
     if(loaded){
       S.clients=loaded.clients||[];S.garments=loaded.garments||{};
-      S.labels=loaded.labels||{};
+      S.labels=loaded.labels||{};S.cantJudge=loaded.cantJudge||{};
       S.activeId=loaded.activeId||(S.clients[0]&&S.clients[0].id)||null;
     }
   }catch(e){/* render the empty state */}

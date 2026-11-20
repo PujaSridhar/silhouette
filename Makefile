@@ -9,8 +9,9 @@ build:  ## regenerate the published pages from templates + engine exports
 	PYTHONPATH=tools $(PY) tools/export_app_data.py
 	$(PY) tools/build_pages.py
 
-parity: ## replay both built pages' parity fixtures in Node (run build first)
+parity: ## replay both built pages' parity fixtures in Node, and the Rate tab flow (run build first)
 	node tools/check_parity.js demo/index.html app/index.html
+	node tools/check_rate_flow.js app/index.html
 
 help:
 	@grep -E '^[a-z-]+:.*?##' $(MAKEFILE_LIST) | sed 's/:.*##/\t/' | expand -t24

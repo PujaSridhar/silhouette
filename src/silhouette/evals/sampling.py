@@ -18,6 +18,7 @@ Both matter because the labels have two jobs: validating the ranking
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from ..models import Garment, Outfit, StyleCV, outfit_slot_key
@@ -25,9 +26,20 @@ from ..rules import Rule
 from ..solver import ScoredOutfit, candidates, score
 from .store import LabelStore
 
-__all__ = ["Task", "outfit_from_label", "next_batch", "coverage_report"]
+__all__ = ["Task", "outfit_from_label", "next_batch", "coverage_report",
+           "SHARED_N", "SHARED_SEED", "fnv1a32", "shared_hash_key", "shared_set"]
 
 N_STRATA = 5
+
+# The shared set: the same outfits for every rater, so agreement between them
+# can be measured. 12 is enough for alpha to mean something with three to five
+# stylists (12 units x 3 raters = 36 pairable values) and small enough that a
+# stylist finishes it in one sitting, mixed in with their usual outfits.
+SHARED_N = 12
+# Changing the seed changes the set. Ratings already made against the old set
+# still count (agreement is computed on whatever overlaps), but new raters
+# would stop overlapping with old ones, so bump it only on purpose.
+SHARED_SEED = "silhouette.shared.v1"
 
 
 @dataclass(frozen=True)
@@ -156,3 +168,78 @@ def coverage_report(
 
     Expert labels only by default; source=None counts every label."""
     return _labelled_rule_counts(store, wardrobe, cv, rules, source=source)
+
+
+def fnv1a32(text: str) -> int:
+    """32-bit FNV-1a over the string's code units. Tiny, and trivially the
+    same in the app's JavaScript, which is the point: Python's hash() is
+    salted per process and random.Random is not portable."""
+    h = 0x811C9DC5
+    for ch in text:
+        h ^= ord(ch)
+        h = (h * 0x01000193) & 0xFFFFFFFF
+    return h
+
+
+def shared_hash_key(outfit: Outfit, context: str) -> str:
+    """The string the shared set hashes. Matches the app's outfitKeyOf
+    exactly (`|t=0|`, not the labels' `|tucked=False|`), so both sides pick
+    the same outfits."""
+    def gid(slot: str) -> str | None:
+        g = getattr(outfit, slot)
+        return g.id if g else None
+
+    return outfit_slot_key(gid) + f"|t={int(bool(outfit.tucked))}|{context}"
+
+
+def shared_set(
+    wardrobe: list[Garment],
+    cv: StyleCV,
+    rules: list[Rule],
+    n: int = SHARED_N,
+    contexts: list[str] | None = None,
+    seed: str = SHARED_SEED,
+) -> list[Task]:
+    """Outfits every rater rates, so their judgements overlap.
+
+    Deterministic: a function of the wardrobe (its garment ids), the person's
+    frame and goals, and the seed - never of what anyone has already rated.
+    Two stylists working on the same wardrobe therefore get the same set,
+    whatever order they rate in. Spread across the five score quintiles in
+    turn, because agreement measured only on mediocre outfits is inflated by
+    a restricted range: everyone agrees a so-so outfit is a 3.
+
+    Within a quintile the order is a seeded hash of the outfit key, so the
+    pick is arbitrary but fixed. The app's sharedSet() is the same algorithm;
+    the parity fixture checks they choose the same keys."""
+    names = contexts or list(cv.contexts)
+    all_outfits = list(candidates(wardrobe, cv.frame))
+    pool: list[tuple[Task, str]] = []
+    for name in names:
+        ctx = cv.context(name)
+        for o in all_outfits:
+            s = score(o, cv, ctx, rules)
+            if s.feasible:
+                pool.append((Task(o, name, s), shared_hash_key(o, name)))
+    if not pool or n <= 0:
+        return []
+
+    # Rounded so a last-bit float difference between Python and JS cannot
+    # move an outfit across a quintile boundary. floor(x + 0.5) is what JS's
+    # Math.round does; Python's round() rounds half to even.
+    tot = [math.floor(t.scored.total * 1e6 + 0.5) / 1e6 for t, _ in pool]
+    lo, hi = min(tot), max(tot)
+    strata: list[list[tuple[int, str, Task]]] = [[] for _ in range(N_STRATA)]
+    for (t, k), v in zip(pool, tot):
+        strata[_stratum(v, lo, hi)].append((fnv1a32(seed + "|" + k), k, t))
+    for st in strata:
+        st.sort(key=lambda x: (x[0], x[1]))
+
+    chosen: list[Task] = []
+    depth = 0
+    while len(chosen) < n and any(depth < len(st) for st in strata):
+        for st in strata:
+            if depth < len(st) and len(chosen) < n:
+                chosen.append(st[depth][2])
+        depth += 1
+    return chosen

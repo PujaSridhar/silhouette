@@ -13,9 +13,9 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from .schema import Label, label_from_dict
+from .schema import CantJudge, Label, cant_judge_from_dict, label_from_dict
 
-__all__ = ["LabelStore"]
+__all__ = ["LabelStore", "CantJudgeStore", "cant_judge_path"]
 
 
 class LabelStore:
@@ -89,6 +89,41 @@ class LabelStore:
         Pass source=None for every source."""
         pool = self.all() if source is None else [l for l in self.all() if l.source == source]
         return {l.outfit_key for l in pool}
+
+    def __len__(self) -> int:
+        return len(self.all())
+
+
+def cant_judge_path(labels_path: str | Path) -> Path:
+    """Where the "couldn't judge" marks live: beside the labels they go with."""
+    return Path(labels_path).with_name("cant_judge.jsonl")
+
+
+class CantJudgeStore:
+    """Append-only JSONL of "couldn't judge" marks. A separate file from the
+    labels, so a mark can never be read as a rating."""
+
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+
+    def append(self, mark: CantJudge) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.path, "a") as fh:
+            fh.write(json.dumps(mark.to_dict(), sort_keys=True) + "\n")
+
+    def all(self) -> list[CantJudge]:
+        if not self.path.exists():
+            return []
+        out: list[CantJudge] = []
+        for n, line in enumerate(self.path.read_text().splitlines(), 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                out.append(cant_judge_from_dict(json.loads(line)))
+            except Exception as exc:
+                raise ValueError(f"{self.path}:{n} is not a valid mark: {exc}") from exc
+        return out
 
     def __len__(self) -> int:
         return len(self.all())
