@@ -102,7 +102,7 @@ No shopping involved.
   (CSV, hand-        │                    │
    labelled in    break_ratio             ▼
    phase 0)       lift, volume       rules engine ──▶ hard: feasible?
-                  asymmetry,         (YAML, 17 rules)  soft: weighted score
+                  asymmetry,         (YAML, 18 rules)  soft: weighted score
                   ΔE2000 contrast          │                  │
                                            ▼                  ▼
                                       explanations      CP-SAT week planner
@@ -291,7 +291,7 @@ change together.
 - [ADR 0004 — the eval harness, and what it refuses to do](docs/adr/0004-eval-harness.md)
 - [The pitch](docs/pitch.md) — the stylist-first wedge, the moat, and the risks
 - [Language policy](docs/language-policy.md) — describe garments and geometry,
-  never a body as a problem. Enforced in all 17 message templates and asserted in
+  never a body as a problem. Enforced in all 18 message templates and asserted in
   tests, not left to a prompt.
 
 ## Honest limits

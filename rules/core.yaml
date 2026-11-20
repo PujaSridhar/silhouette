@@ -21,13 +21,31 @@ rules:
     goal: elongate_lower_body
     weight: 0.85
     note: >
-      The core rule. A high waistband or high dress waist seam, with nothing
-      covering it, moves the visual division into the upper third.
-    when: "f.break_ratio is not None and (bottom.rise in ('high','super_high') or dress.waist_seam in ('empire','natural')) and f.hem_drop <= 0.01 and 0.26 <= f.break_ratio <= 0.43"
+      The core rule. A waistband above the natural waist, with nothing covering
+      it, moves the visual division into the upper third.
+    when: "f.break_ratio is not None and bottom.rise in ('high','super_high') and f.hem_drop <= 0.01 and 0.26 <= f.break_ratio <= 0.43"
     score: "norm(f.lift, 0.0, 0.12)"
     explain: >
       The break sits at {break_ratio:.0%} of your height instead of near the
       middle, so the eye reads about {lift:.0%} more length below it.
+
+  - id: high_seam_elongates
+    kind: soft
+    goal: elongate_lower_body
+    weight: 0.85
+    note: >
+      The dress counterpart to high_break_elongates. A seam above the natural
+      waist does the same work as a high rise, and the engine was blind to it.
+      Kept as its own rule rather than widening high_break_elongates, so the
+      top-and-bottom rule and every number measured with it stay unchanged.
+      The norm ceiling is 0.20, not 0.12: empire seams reach higher lift than
+      any waistband can. The message says "above the middle", not "above the
+      natural waist", because a natural-waist seam fires this rule too.
+    when: "f.break_source == 'dress_seam' and f.break_ratio is not None and 0.22 <= f.break_ratio <= 0.43"
+    score: "norm(f.lift, 0.0, 0.20)"
+    explain: >
+      The seam sits at {break_ratio:.0%} of your height, well above the middle,
+      so the eye reads about {lift:.0%} more length below it.
 
   - id: untucked_hem_cancels_the_rise
     kind: soft
