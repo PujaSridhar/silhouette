@@ -243,7 +243,7 @@ def test_every_rule_is_exercised_by_some_test(rules, request):
     """Fails when a rule is added without a fixture."""
     source = "".join(
         (request.path.parent / name).read_text()
-        for name in ("test_rules.py",)
+        for name in ("test_rules.py", "test_drapes.py")
     )
     missing = [r.id for r in rules if r.id not in source]
     assert not missing, f"rules with no test fixture: {missing}"

@@ -102,7 +102,7 @@ No shopping involved.
   (CSV, hand-        │                    │
    labelled in    break_ratio             ▼
    phase 0)       lift, volume       rules engine ──▶ hard: feasible?
-                  asymmetry,         (YAML, 18 rules)  soft: weighted score
+                  asymmetry,         (YAML, 21 rules)  soft: weighted score
                   ΔE2000 contrast          │                  │
                                            ▼                  ▼
                                       explanations      CP-SAT week planner
@@ -120,6 +120,14 @@ No shopping involved.
 | `capsule.py` | CP-SAT week planning with slack-based bottleneck diagnosis. |
 | `gaps.py` | Marginal outfit yield: which single purchase buys the most. |
 | `explain.py` | Renders the fired rules. No generated text. |
+
+An outfit is a top and a bottom, or a one-piece, plus shoes, with an optional
+outer layer and an optional **drape** (a dupatta, a stole). A drape counts toward
+formality, warmth and pattern but never moves the break, because how it is worn
+changes its shape more than the cloth does. Its effect lives in its own rules: a
+dupatta earns credit over the kurta, lehenga or anarkali it was made for (more
+the dressier the occasion), costs a little over western basics, and is rejected
+over a saree, which is already draped. A stole is neutral.
 
 **Where the solver actually earns its keep** is the *week*, not the outfit.
 Scoring one outfit is enumeration. Choosing seven outfits that cover seven
@@ -253,7 +261,8 @@ The demo re-implements the geometry and rule conditions in JavaScript so the sli
 work live. A second implementation is a second chance to be wrong, so the page replays
 76 outfit/context cases whose answers the Python engine computed and compares every
 number and every fired rule. The badge in the corner reports the result — currently
-**76/76**. If the port ever drifts, the page says so itself.
+**76/76**. If the port ever drifts, the page says so itself. `make build parity`
+replays the same fixtures through both pages' engines in Node, before publishing.
 
 ## The labelling loop
 

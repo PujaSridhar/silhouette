@@ -94,6 +94,7 @@ def make_labels(
                     "dress": o.dress.id if o.dress else None,
                     "outer": o.outer.id if o.outer else None,
                     "shoe": o.shoe.id if o.shoe else None,
+                    "drape": o.drape.id if o.drape else None,
                     "tucked": o.tucked,
                 },
                 context=task.context,

@@ -530,14 +530,12 @@ def test_a_photo_without_crown_or_sole_is_skipped_not_fatal(tmp_path):
     assert rows == []
 
 
-def test_a_dupatta_is_catalogued_but_has_no_slot_yet():
-    """`Outfit` has exactly five slots and `candidates()` reads only those five
-    category names, so a `drape` row loads cleanly and is then never assembled.
+def test_a_dupatta_is_catalogued_and_worn_only_as_a_drape():
+    """A `drape` row is recorded as the garment it is and assembled only into
+    the outfit's drape slot, never forced into `top` or `outer` where it would
+    score as something it is not.
 
-    That is the point: it is recorded as the garment it is, rather than forced
-    into `top` or `outer` where it would score as something it is not. This
-    test fails the day a slot is added, which is the moment the note stops
-    being true.
+    Structural only: her ratings are still being filled in.
     """
     from silhouette.models import load_style_cv, load_wardrobe
     from silhouette.solver import candidates
@@ -546,5 +544,10 @@ def test_a_dupatta_is_catalogued_but_has_no_slot_yet():
     drapes = {g.id for g in real if g.category == "drape"}
     assert drapes, "the dupatta row is gone from wardrobe_real.csv"
     cv = load_style_cv("data/style_cv.yaml")
-    assembled = {gid for o in candidates(real, cv.frame) for gid in o.key}
-    assert not (assembled & drapes)
+    worn = set()
+    for o in candidates(real, cv.frame):
+        others = {g.id for g in o.items if g is not o.drape}
+        assert not (others & drapes), o.label()
+        if o.drape is not None:
+            worn.add(o.drape.id)
+    assert worn == drapes

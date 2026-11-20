@@ -154,6 +154,7 @@ def _namespace(outfit: Outfit, f: Features, frame: Frame, ctx: Context) -> dict[
         "dress": outfit.dress or NULL,
         "outer": outfit.outer or NULL,
         "shoe": outfit.shoe or NULL,
+        "drape": outfit.drape or NULL,
         "tucked": outfit.tucked,
         "items": outfit.items,
         "f": f,
@@ -184,6 +185,7 @@ def _facts(outfit: Outfit, f: Features, ctx: Context) -> dict[str, Any]:
         dress_name=outfit.dress.name if outfit.dress else "",
         outer_name=outfit.outer.name if outfit.outer else "",
         shoe_name=outfit.shoe.name if outfit.shoe else "",
+        drape_name=outfit.drape.name if outfit.drape else "",
         dirty=", ".join(g.name for g in outfit.items if g.availability != "clean"),
     )
     return d

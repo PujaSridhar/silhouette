@@ -15,6 +15,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
+from ..models import outfit_slot_key
+
 __all__ = ["Ratings", "Label", "label_from_dict", "DIMENSIONS"]
 
 DIMENSIONS = ("proportion", "balance", "formality", "colour", "cohesion")
@@ -74,9 +76,8 @@ class Label:
     @property
     def outfit_key(self) -> str:
         """Stable identity for an outfit, for detecting re-labels."""
-        slots = ("top", "bottom", "dress", "outer", "shoe")
-        ids = [str(self.outfit.get(s) or "-") for s in slots]
-        return "|".join(ids) + f"|tucked={bool(self.outfit.get('tucked'))}|{self.context}"
+        return (outfit_slot_key(self.outfit.get)
+                + f"|tucked={bool(self.outfit.get('tucked'))}|{self.context}")
 
     @property
     def has_dimensions(self) -> bool:

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..models import Garment, StyleCV
+from ..models import Garment, StyleCV, outfit_slot_key
 from ..rules import Rule
 from ..solver import score
 from .judge import Judge, MeanJudge, ScoreJudge
@@ -110,12 +110,8 @@ def evaluate_labels(
         for name in cv.contexts:
             for s in _best(wardrobe, cv, cv.context(name), rules, top_n=3):
                 o = s.outfit
-                ids = [
-                    (o.top.id if o.top else "-"), (o.bottom.id if o.bottom else "-"),
-                    (o.dress.id if o.dress else "-"), (o.outer.id if o.outer else "-"),
-                    (o.shoe.id if o.shoe else "-"),
-                ]
-                key = "|".join(ids) + f"|tucked={o.tucked}|{name}"
+                key = (outfit_slot_key(lambda k: getattr(o, k).id if getattr(o, k) else None)
+                       + f"|tucked={o.tucked}|{name}")
                 if key in by_key:
                     seen += 1
                     yes += int(by_key[key].would_wear)

@@ -15,7 +15,7 @@ import yaml
 
 __all__ = [
     "Garment", "Frame", "Context", "StyleCV", "Outfit",
-    "load_wardrobe", "load_style_cv",
+    "SLOTS", "outfit_slot_key", "load_wardrobe", "load_style_cv",
 ]
 
 
@@ -35,7 +35,7 @@ def _s(v: str | None, default: str | None = None) -> str | None:
 class Garment:
     id: str
     name: str
-    category: str                 # top | bottom | dress | outer | shoe
+    category: str                 # top | bottom | dress | outer | shoe | drape
     subcategory: str = ""
     rise: str | None = None       # low | mid | high | super_high   (bottoms)
     length: str | None = None     # crop | waist | hip | tunic | knee | midi | maxi | ankle | full
@@ -110,9 +110,36 @@ class StyleCV:
         return self.contexts[name]
 
 
+# Every garment slot, in the order items, labels and keys list them. `drape`
+# (a dupatta, a stole) comes last so an outfit without one reads, lists and
+# keys exactly as it did before the slot existed.
+SLOTS = ("top", "bottom", "dress", "outer", "shoe", "drape")
+
+
+def outfit_slot_key(get) -> str:
+    """The garment part of an outfit's stable identity, from `get(slot) -> id`.
+
+    Labels, the sampler and the report all key outfits this way, so it lives
+    in one place. The drape is appended only when there is one, which keeps
+    every key written before drapes existed valid.
+    """
+    ids = [str(get(s) or "-") for s in SLOTS[:5]]
+    drape = get("drape")
+    if drape:
+        ids.append(f"drape={drape}")
+    return "|".join(ids)
+
+
 @dataclass(frozen=True)
 class Outfit:
-    """A concrete assembly. `tucked` is a styling choice, not a garment property."""
+    """A concrete assembly. `tucked` is a styling choice, not a garment property.
+
+    `drape` is an optional loose layer worn over everything else, a dupatta or
+    a stole. It adds to formality, warmth and pattern like any garment, but not
+    to the silhouette: it does not move the break and its volume is not read,
+    because how it is worn (open, pinned, over one shoulder) changes its width
+    more than the cloth does. Its effect is carried by its own rules.
+    """
 
     top: Garment | None = None
     bottom: Garment | None = None
@@ -120,10 +147,12 @@ class Outfit:
     outer: Garment | None = None
     shoe: Garment | None = None
     tucked: bool = False
+    drape: Garment | None = None
 
     @property
     def items(self) -> list[Garment]:
-        return [g for g in (self.top, self.bottom, self.dress, self.outer, self.shoe) if g]
+        return [g for g in (self.top, self.bottom, self.dress, self.outer, self.shoe,
+                            self.drape) if g]
 
     @property
     def key(self) -> tuple:

@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import sys
 from pathlib import Path
 
@@ -23,7 +24,7 @@ from .evals.synthetic import make_labels
 from .explain import render
 from .gaps import analyse
 from .geometry import compute
-from .models import Garment, Outfit, load_style_cv, load_wardrobe
+from .models import SLOTS, Garment, Outfit, load_style_cv, load_wardrobe
 from .rules import evaluate, load_rules
 from .solver import best, score
 
@@ -61,6 +62,7 @@ def _assemble(items: list[Garment]) -> Outfit:
         dress=slots.get("dress"),
         outer=slots.get("outer"),
         shoe=slots.get("shoe"),
+        drape=slots.get("drape"),
     )
 
 
@@ -89,10 +91,7 @@ def cmd_critique(args) -> int:
         raise SystemExit(f"unknown garment ids: {missing}")
     outfit = _assemble([index[i] for i in args.items])
     if args.tucked:
-        outfit = Outfit(
-            top=outfit.top, bottom=outfit.bottom, dress=outfit.dress,
-            outer=outfit.outer, shoe=outfit.shoe, tucked=True,
-        )
+        outfit = dataclasses.replace(outfit, tucked=True)
     ctx = cv.context(args.context)
     s = score(outfit, cv, ctx, rules)
     print(f"\n{outfit.label()}\nfor: {ctx.name}")
@@ -179,6 +178,7 @@ def _outfit_dict(o) -> dict:
         "dress": o.dress.id if o.dress else None,
         "outer": o.outer.id if o.outer else None,
         "shoe": o.shoe.id if o.shoe else None,
+        "drape": o.drape.id if o.drape else None,
         "tucked": o.tucked,
     }
 
@@ -422,7 +422,7 @@ def cmd_import(args) -> int:
     bad = []
     index = {g.id: g for g in wardrobe}
     for l in labels:
-        for slot in ("top", "bottom", "dress", "outer", "shoe"):
+        for slot in SLOTS:
             gid = l.outfit.get(slot)
             if gid and gid not in index:
                 bad.append((l.id, gid))

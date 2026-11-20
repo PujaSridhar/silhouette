@@ -44,8 +44,61 @@ def convert_template(t: str) -> str:
     return re.sub(r"\{(\w+)(:[^}]+)?\}", sub, " ".join(t.split()))
 
 
+def drape_parity_picks(wardrobe, drapes, cv, rules):
+    """(scored outfit, context name) pairs that exercise the drape slot.
+
+    The sample wardrobe has no drape, and adding one to it would change every
+    number measured on it. So drape cases come from the sample wardrobe plus
+    data/wardrobe_drapes.csv, kept apart: for every rule, one draped outfit it
+    fires or rejects on in each context where it can (so a score that depends
+    on the context, like dupatta_completes_the_set, is checked across the
+    range), then the two best draped outfits per context so the arithmetic is
+    checked where drape rules stack with the others.
+    """
+    draped = [o for o in candidates(wardrobe + drapes, cv.frame) if o.drape is not None]
+    picks: list = []
+    seen: set[str] = set()
+
+    def take(s, name: str) -> None:
+        key = f"{s.outfit.key}|{name}"
+        if key in seen:
+            return
+        seen.add(key)
+        picks.append((s, name))
+
+    # Scored lazily and memoised: scoring every draped outfit in every
+    # context would multiply the build time several times over, and the rule
+    # scan below usually finds its hit early.
+    memo: dict[tuple[str, int], object] = {}
+
+    def scored(name: str, i: int):
+        if (name, i) not in memo:
+            memo[(name, i)] = score(draped[i], cv, cv.context(name), rules)
+        return memo[(name, i)]
+
+    def hit_ids(s) -> set[str]:
+        return {fr.rule.id for fr in s.verdict.fired} | {x.id for x, _ in s.verdict.violations}
+
+    # Rules that can only fire on a draped outfit, plus every rule a drape
+    # can change the outcome of through formality, warmth or pattern.
+    for r in rules:
+        for name in cv.contexts:
+            for i in range(len(draped)):
+                s = scored(name, i)
+                if r.id in hit_ids(s):
+                    take(s, name)
+                    break
+    # High scorers, from a fixed stride through the pool rather than all of it.
+    for name in cv.contexts:
+        sample = [scored(name, i) for i in range(0, len(draped), 7)]
+        for s in sorted(sample, key=lambda s: -s.total)[:2]:
+            take(s, name)
+    return picks
+
+
 def main() -> int:
     wardrobe = load_wardrobe(ROOT / "data" / "wardrobe.csv")
+    drapes = load_wardrobe(ROOT / "data" / "wardrobe_drapes.csv")
     catalog = load_wardrobe(ROOT / "data" / "catalog.csv")
     cv = load_style_cv(ROOT / "data" / "style_cv.yaml")
     rules = load_rules(ROOT / "rules" / "core.yaml")
@@ -60,6 +113,9 @@ def main() -> int:
             "contexts": [asdict(c) for c in cv.contexts.values()],
         },
         "garments": [asdict(g) for g in wardrobe],
+        # Only the parity check reads these. They are not part of the demo's
+        # wardrobe, so the demo's own suggestions stay as they were.
+        "parityGarments": [asdict(g) for g in drapes],
         "catalog": [asdict(g) for g in catalog],
         "rules": [
             {
@@ -81,11 +137,20 @@ def main() -> int:
     store_keys: set[str] = set()
     fixture: list[dict] = []
     all_outfits = list(candidates(wardrobe, cv.frame))
+    # Memoised so a rule that never fires (a drape rule, on this wardrobe)
+    # costs one pass over the outfits, not one per context per rule.
+    _memo: dict = {}
+
+    def scored_at(name: str, i: int):
+        if (name, i) not in _memo:
+            _memo[(name, i)] = score(all_outfits[i], cv, cv.context(name), rules)
+        return _memo[(name, i)]
+
     rule_seen: dict[str, int] = {r.id: 0 for r in rules}
 
     for name in cv.contexts:
         ctx = cv.context(name)
-        scored = [score(o, cv, ctx, rules) for o in all_outfits]
+        scored = [scored_at(name, i) for i in range(len(all_outfits))]
         scored.sort(key=lambda s: -s.total)
         # top, bottom and middle of the ranking, plus infeasible examples
         picks = scored[:6] + scored[len(scored) // 2 : len(scored) // 2 + 4] + scored[-4:]
@@ -103,6 +168,7 @@ def main() -> int:
                     "dress": o.dress.id if o.dress else None,
                     "outer": o.outer.id if o.outer else None,
                     "shoe": o.shoe.id if o.shoe else None,
+                    "drape": o.drape.id if o.drape else None,
                     "tucked": o.tucked,
                 },
                 "context": name,
@@ -139,6 +205,7 @@ def main() -> int:
                 "dress": o.dress.id if o.dress else None,
                 "outer": o.outer.id if o.outer else None,
                 "shoe": o.shoe.id if o.shoe else None,
+                "drape": o.drape.id if o.drape else None,
                 "tucked": o.tucked,
             },
             "context": ctx_name,
@@ -165,9 +232,8 @@ def main() -> int:
         for name in cv.contexts:
             if found >= 2:
                 break
-            ctx = cv.context(name)
-            for o in all_outfits:
-                s2 = score(o, cv, ctx, rules)
+            for i in range(len(all_outfits)):
+                s2 = scored_at(name, i)
                 hits = {fr.rule.id for fr in s2.verdict.fired} | {
                     r.id for r, _ in s2.verdict.violations
                 }
@@ -175,6 +241,11 @@ def main() -> int:
                     add(s2, name)
                     found += 1
                     break
+
+    n_plain = len(fixture)
+    for s3, name in drape_parity_picks(wardrobe, drapes, cv, rules):
+        add(s3, name)
+    n_drape = len(fixture) - n_plain
 
     bundle["parity"] = fixture
 
@@ -184,7 +255,7 @@ def main() -> int:
     uncovered = [r for r, n in rule_seen.items() if n == 0]
     print(f"wrote {out.relative_to(ROOT)}  ({out.stat().st_size // 1024} KB)")
     print(f"  garments {len(wardrobe)}  catalog {len(catalog)}  rules {len(rules)}")
-    print(f"  parity fixture: {len(fixture)} outfit/context pairs")
+    print(f"  parity fixture: {len(fixture)} outfit/context pairs ({n_drape} with a drape)")
     print(f"  rules exercised by the fixture: {len(rule_seen) - len(uncovered)}/{len(rule_seen)}")
     if uncovered:
         print(f"  NOT exercised: {', '.join(sorted(uncovered))}")
