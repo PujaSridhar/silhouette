@@ -92,8 +92,14 @@ def cmd_fashionpedia(args) -> int:
 def cmd_measure(args) -> int:
     from ..models import load_style_cv, load_wardrobe
     from .volume_eval import measure_photos, report, summarise
-    rows = measure_photos(args.photos, load_wardrobe(_wardrobe(args, WARDROBE_REAL)),
-                          load_style_cv(args.style_cv),
+    try:
+        wardrobe = load_wardrobe(_wardrobe(args, WARDROBE_REAL))
+    except ValueError as e:
+        # An unrated wardrobe is the expected state before she has judged it,
+        # not a crash worth a traceback.
+        print(e)
+        return 1
+    rows = measure_photos(args.photos, wardrobe, load_style_cv(args.style_cv),
                           masks=args.masks)
     if not rows:
         print("no measurements: check photos/manifest.csv and the mask folder")

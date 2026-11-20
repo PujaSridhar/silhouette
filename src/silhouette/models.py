@@ -137,10 +137,21 @@ class Outfit:
         return " + ".join(bits)
 
 
-def load_wardrobe(path: str | Path) -> list[Garment]:
+def load_wardrobe(path: str | Path, *, require_volume: bool = True) -> list[Garment]:
+    """Read a wardrobe CSV.
+
+    An empty `volume` used to become 1.0 here, which is not "unjudged" but a
+    real width the engine scores against: a half-rated file would quietly
+    produce confident, wrong answers. So a blank volume is an error by
+    default. `require_volume=False` is for the tools whose job is to fill the
+    column in, and for tests that only care about the other fields.
+    """
     out: list[Garment] = []
+    unrated: list[str] = []
     with open(path, newline="") as fh:
-        for row in csv.DictReader(fh):
+        for lineno, row in enumerate(csv.DictReader(fh), start=2):
+            if require_volume and not str(row.get("volume") or "").strip():
+                unrated.append(f"line {lineno}: {row.get('id') or '<no id>'}")
             out.append(
                 Garment(
                     id=row["id"],
@@ -167,6 +178,15 @@ def load_wardrobe(path: str | Path) -> list[Garment]:
                     availability=_s(row.get("availability"), "clean") or "clean",
                 )
             )
+    if unrated:
+        shown = "\n  ".join(unrated[:5])
+        more = f"\n  ... and {len(unrated) - 5} more" if len(unrated) > 5 else ""
+        raise ValueError(
+            f"{path}: {len(unrated)} garment(s) have no volume, so this wardrobe "
+            f"cannot be scored:\n  {shown}{more}\n"
+            "Rate them with `python tools/rate_wardrobe.py`, or pass "
+            "require_volume=False if you only need the other columns."
+        )
     ids = [g.id for g in out]
     dupes = {i for i in ids if ids.count(i) > 1}
     if dupes:

@@ -509,7 +509,7 @@ def test_the_reference_wardrobe_is_untouched_by_the_real_one():
     from silhouette.vision import cli
     assert len(load_wardrobe(cli.WARDROBE)) == 30
     ref = {g.id for g in load_wardrobe(cli.WARDROBE)}
-    real = {g.id for g in load_wardrobe(cli.WARDROBE_REAL)}
+    real = {g.id for g in load_wardrobe(cli.WARDROBE_REAL, require_volume=False)}
     assert not (ref & real), "a real piece reuses a reference id"
 
 
@@ -542,7 +542,7 @@ def test_a_dupatta_is_catalogued_but_has_no_slot_yet():
     from silhouette.models import load_style_cv, load_wardrobe
     from silhouette.solver import candidates
     from silhouette.vision import cli
-    real = load_wardrobe(cli.WARDROBE_REAL)
+    real = load_wardrobe(cli.WARDROBE_REAL, require_volume=False)
     drapes = {g.id for g in real if g.category == "drape"}
     assert drapes, "the dupatta row is gone from wardrobe_real.csv"
     cv = load_style_cv("data/style_cv.yaml")

@@ -1,0 +1,225 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rate wardrobe</title>
+<style>
+  :root{
+    --bg:#13141a; --panel:#1b1d25; --line:#2c2f3a; --ink:#e9eaf0;
+    --dim:#9ea3b4; --accent:#8ab4ff; --ok:#6ee7a8; --warn:#ffcc66;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
+         padding:14px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;
+         background:var(--bg);z-index:5}
+  h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
+  .muted{color:var(--dim)}
+  .bar{flex:1;min-width:140px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--ok);width:0}
+  main{display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,440px);
+       gap:24px;padding:20px;align-items:start;max-width:1200px;margin:0 auto}
+  @media(max-width:860px){main{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+  figure{margin:0}
+  img#shot{width:100%;border-radius:8px;display:block;background:#0c0d11;min-height:180px}
+  .swatch{display:inline-block;width:12px;height:12px;border-radius:3px;
+          border:1px solid rgba(255,255,255,.25);vertical-align:-1px;margin-right:6px}
+  h2{font-size:18px;margin:0 0 2px}
+  .meta{color:var(--dim);font-size:13px;margin-bottom:14px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0 2px}
+  th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-weight:500}
+  td.num{font-variant-numeric:tabular-nums;text-align:right}
+  label{display:block;margin:14px 0 4px;font-size:13px;color:var(--dim)}
+  label b{color:var(--ink);font-weight:600}
+  input[type=number]{width:100%;padding:9px 10px;border-radius:7px;font-size:15px;
+      background:#0f1016;border:1px solid var(--line);color:var(--ink);
+      font-variant-numeric:tabular-nums}
+  input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .row{display:flex;gap:10px}.row>*{flex:1}
+  .scale{font-size:12px;color:var(--dim);margin-top:4px}
+  .btns{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  button{padding:9px 15px;border-radius:7px;border:1px solid var(--line);
+         background:#232634;color:var(--ink);font-size:14px;cursor:pointer}
+  button.primary{background:var(--accent);color:#0b1020;border-color:transparent;font-weight:600}
+  button:disabled{opacity:.45;cursor:default}
+  #list{display:flex;flex-wrap:wrap;gap:5px;padding:0 20px 28px;max-width:1200px;margin:0 auto}
+  #list button{padding:3px 8px;font-size:11.5px;border-radius:999px}
+  #list button.done{border-color:var(--ok);color:var(--ok)}
+  #list button.now{background:var(--accent);color:#0b1020}
+  #msg{min-height:18px;font-size:13px;margin-top:8px}
+  .err{color:#ff9a9a}.good{color:var(--ok)}
+  kbd{background:#0f1016;border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:11px}
+</style>
+
+<header>
+  <h1>Rate wardrobe</h1>
+  <span class="muted" id="count">loading…</span>
+  <span class="bar"><i id="fill"></i></span>
+  <span class="muted">local only — nothing is uploaded</span>
+</header>
+
+<main>
+  <section class="panel">
+    <figure>
+      <img id="shot" alt="">
+      <figcaption class="muted" id="shotcap" style="font-size:12px;margin-top:8px"></figcaption>
+    </figure>
+  </section>
+
+  <section class="panel">
+    <h2 id="name">—</h2>
+    <div class="meta" id="meta"></div>
+
+    <table id="anchors"><thead><tr>
+      <th>anchor from wardrobe.csv</th><th class="num">vol</th>
+      <th class="num">struct</th><th class="num">form</th>
+    </tr></thead><tbody></tbody></table>
+
+    <label for="volume"><b>volume</b> — garment width ÷ body width at that zone</label>
+    <input id="volume" type="number" step="0.05" min="0.3" max="3" inputmode="decimal">
+    <div class="scale">under 1.00 is fitted · 1.00 is body width · about 1.65 is oversized</div>
+
+    <div id="lowerwrap" hidden>
+      <label for="volume_lower"><b>volume_lower</b> — the same ratio at the hip and below</label>
+      <input id="volume_lower" type="number" step="0.05" min="0.3" max="3" inputmode="decimal">
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="structure"><b>structure</b> 0–1</label>
+        <input id="structure" type="number" step="0.05" min="0" max="1" inputmode="decimal">
+        <div class="scale">how stiffly it holds its own shape</div>
+      </div>
+      <div>
+        <label for="formality"><b>formality</b> 0–1</label>
+        <input id="formality" type="number" step="0.05" min="0" max="1" inputmode="decimal">
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="primary" id="save">Save &amp; next</button>
+      <button id="skip">Skip</button>
+      <button id="prev">←</button>
+      <button id="next">→</button>
+      <button id="other" hidden>Other photo</button>
+    </div>
+    <div id="msg"><span class="muted"><kbd>Enter</kbd> save · <kbd>s</kbd> skip · <kbd>←</kbd> <kbd>→</kbd> move</span></div>
+  </section>
+</main>
+
+<div id="list"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const F = ["volume","volume_lower","structure","formality"];
+let items = [], at = 0, shot = 0;
+
+const rated = it => it.volume !== "";
+
+async function load(){
+  const r = await fetch("/api/items");
+  items = (await r.json()).items;
+  const first = items.findIndex(i => !rated(i));
+  at = first === -1 ? 0 : first;
+  draw();
+}
+
+function progress(){
+  const done = items.filter(rated).length;
+  $("#count").textContent = `${done} of ${items.length} rated`;
+  $("#fill").style.width = (items.length ? done/items.length*100 : 0) + "%";
+}
+
+function drawList(){
+  const box = $("#list"); box.innerHTML = "";
+  items.forEach((it,i) => {
+    const b = document.createElement("button");
+    b.textContent = it.id;
+    if (rated(it)) b.classList.add("done");
+    if (i === at) b.classList.add("now");
+    b.onclick = () => { at = i; shot = 0; draw(); };
+    box.appendChild(b);
+  });
+}
+
+function draw(){
+  const it = items[at];
+  if (!it) return;
+  $("#name").innerHTML = `<span class="swatch" style="background:${it.color_hex}"></span>${it.name}`;
+  $("#meta").textContent =
+    [it.id, it.category + " / " + it.subcategory, it.fit, it.length,
+     it.fabric_weight, it.drape].filter(Boolean).join(" · ");
+
+  const tb = $("#anchors tbody"); tb.innerHTML = "";
+  if (!it.anchors.length){
+    tb.innerHTML = `<tr><td colspan="4" class="muted">no judged piece in this category to anchor against</td></tr>`;
+  }
+  it.anchors.forEach(a => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><span class="swatch" style="background:${a.color_hex}"></span>${a.name}</td>`+
+      `<td class="num">${a.volume || "–"}</td><td class="num">${a.structure || "–"}</td>`+
+      `<td class="num">${a.formality || "–"}</td>`;
+    tb.appendChild(tr);
+  });
+
+  $("#lowerwrap").hidden = !it.two_part;
+  F.forEach(f => { const el = $("#"+f); if (el) el.value = it[f] ?? ""; });
+
+  if (it.photos.length){
+    shot = Math.min(shot, it.photos.length-1);
+    $("#shot").src = `/crop/${encodeURIComponent(it.id)}.jpg?n=${shot}`;
+    $("#shot").alt = it.name;
+    $("#shotcap").textContent = `${it.photos[shot]} — ${shot+1} of ${it.photos.length}`;
+    $("#other").hidden = it.photos.length < 2;
+  } else {
+    $("#shot").removeAttribute("src");
+    $("#shotcap").textContent = "no photo lists this piece";
+    $("#other").hidden = true;
+  }
+  $("#prev").disabled = at === 0;
+  $("#next").disabled = at === items.length-1;
+  progress(); drawList();
+  $("#volume").focus();
+}
+
+function say(text, cls){ $("#msg").innerHTML = `<span class="${cls||""}">${text}</span>`; }
+
+async function save(){
+  const it = items[at];
+  const body = {id: it.id};
+  for (const f of F){
+    const el = $("#"+f); if (!el) continue;
+    if (f === "volume_lower" && !it.two_part) continue;
+    body[f] = el.value.trim();
+  }
+  if (!body.volume){ say("volume is the one that cannot be left empty", "err"); return; }
+  const r = await fetch("/api/save", {method:"POST", headers:{"Content-Type":"application/json"},
+                                      body: JSON.stringify(body)});
+  const out = await r.json();
+  if (!r.ok){ say(out.error || "save failed", "err"); return; }
+  F.forEach(f => { if (f in body) it[f] = body[f]; });
+  say(`saved ${it.id}`, "good");
+  const nxt = items.findIndex((x,i) => i > at && !rated(x));
+  at = nxt === -1 ? Math.min(at+1, items.length-1) : nxt;
+  shot = 0; draw();
+}
+
+$("#save").onclick = save;
+$("#skip").onclick = () => { at = Math.min(at+1, items.length-1); shot=0; draw();
+                             say("skipped — it stays in the queue"); };
+$("#prev").onclick = () => { at = Math.max(at-1,0); shot=0; draw(); };
+$("#next").onclick = () => { at = Math.min(at+1, items.length-1); shot=0; draw(); };
+$("#other").onclick = () => { shot++; draw(); };
+
+addEventListener("keydown", e => {
+  if (e.key === "Enter"){ e.preventDefault(); save(); return; }
+  if (e.target.tagName === "INPUT") return;
+  if (e.key === "s") $("#skip").click();
+  if (e.key === "ArrowLeft") $("#prev").click();
+  if (e.key === "ArrowRight") $("#next").click();
+});
+
+load().catch(e => say("could not load: " + e, "err"));
+</script>
