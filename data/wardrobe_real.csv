@@ -13,8 +13,8 @@ top_tee_orange,Orange tee,top,tee,,waist,fitted,,,,yes,crew,short,solid,light,fl
 top_shirt_red,Deep red collared shirt,top,shirt,,hip,fitted,,,,yes,collar,long,solid,mid,crisp,,,,,#8E2233,clean
 top_kurta_white,White cotton kurta,top,kurta,,tunic,straight,,,,no,vneck,three_quarter,solid,light,fluid,,,,,#E8E2DC,clean
 top_kurta_teal,Teal silk kurta,top,kurta,,tunic,straight,,,,no,vneck,three_quarter,solid,mid,fluid,,,,,#5E7A70,clean
-bot_jean_wide_indigo,Indigo wide-leg jean,bottom,jean,high,full,relaxed,,,,,,,solid,heavy,crisp,,,,,#0D2342,clean
-bot_jean_wide_midwash,Mid-wash wide-leg jean,bottom,jean,high,full,relaxed,,,,,,,solid,heavy,crisp,,,,,#1A3B5E,clean
+bot_jean_barrel_indigo,Indigo barrel jean,bottom,barrel_jean,high,full,relaxed,,,,,,,solid,heavy,crisp,,,,,#0D2342,clean
+bot_pant_wide_indigo,Indigo wide-leg pant,bottom,wide_leg_trouser,high,full,relaxed,,,,,,,solid,heavy,fluid,,,,,#112746,clean
 bot_skirt_maxi_blk,Black maxi column skirt,bottom,maxi_skirt,high,maxi,straight,,,,,,,solid,mid,fluid,,,,,#0A0E16,clean
 bot_lehenga_maroon,Maroon satin lehenga skirt,bottom,lehenga,high,maxi,relaxed,,,,,,,solid,mid,fluid,,,,,#7A1020,clean
 bot_jean_crop_lightwash,Light-wash cropped jean,bottom,jean,mid,ankle,straight,,,,,,,solid,heavy,crisp,,,,,#50667E,clean
@@ -41,3 +41,4 @@ shoe_hightop_platform,Cream platform high-top,shoe,platform_sneaker,,,straight,,
 shoe_flat_blk,Black flat loafer,shoe,loafer,,,fitted,,,,,,,solid,mid,crisp,,,,,#1E1E20,clean
 shoe_clog_green,Green foam clog,shoe,clog,,,relaxed,,,,,,,solid,light,soft,,,,,#8B9F85,clean
 shoe_heel_cream,Cream pointed heel,shoe,pump,,,fitted,,,,,,,solid,mid,crisp,,,,,#E3DCD2,clean
+drape_dupatta_teal,Teal brocade dupatta,drape,dupatta,,maxi,draped,,,,no,,,brocade,mid,fluid,,,,,#5A766E,clean

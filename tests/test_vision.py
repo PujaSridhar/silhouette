@@ -528,3 +528,23 @@ def test_a_photo_without_crown_or_sole_is_skipped_not_fatal(tmp_path):
     rows = measure_photos(tmp_path, load_wardrobe(cli.WARDROBE),
                           load_style_cv("data/style_cv.yaml"))
     assert rows == []
+
+
+def test_a_dupatta_is_catalogued_but_has_no_slot_yet():
+    """`Outfit` has exactly five slots and `candidates()` reads only those five
+    category names, so a `drape` row loads cleanly and is then never assembled.
+
+    That is the point: it is recorded as the garment it is, rather than forced
+    into `top` or `outer` where it would score as something it is not. This
+    test fails the day a slot is added, which is the moment the note stops
+    being true.
+    """
+    from silhouette.models import load_style_cv, load_wardrobe
+    from silhouette.solver import candidates
+    from silhouette.vision import cli
+    real = load_wardrobe(cli.WARDROBE_REAL)
+    drapes = {g.id for g in real if g.category == "drape"}
+    assert drapes, "the dupatta row is gone from wardrobe_real.csv"
+    cv = load_style_cv("data/style_cv.yaml")
+    assembled = {gid for o in candidates(real, cv.frame) for gid in o.key}
+    assert not (assembled & drapes)
