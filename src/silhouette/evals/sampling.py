@@ -71,9 +71,12 @@ def _labelled_rule_counts(
     wardrobe: list[Garment],
     cv: StyleCV,
     rules: list[Rule],
-    source: str | None = None,
+    source: str | None = "expert",
 ) -> dict[str, int]:
-    """How many labels exist per rule, by re-scoring each labelled outfit."""
+    """How many labels exist per rule, by re-scoring each labelled outfit.
+
+    Counts expert labels by default: bootstrap labels come from the synthetic
+    rater and must not make a rule look covered. Pass source=None for all."""
     index = {g.id: g for g in wardrobe}
     counts: dict[str, int] = {r.id: 0 for r in rules}
     pool = store.all() if source is None else [l for l in store.all() if l.source == source]
@@ -96,7 +99,7 @@ def next_batch(
     n: int = 20,
     contexts: list[str] | None = None,
     feasible_only: bool = True,
-    source: str | None = None,
+    source: str | None = "expert",
 ) -> list[Task]:
     names = contexts or list(cv.contexts)
     done = store.labelled_keys(source=source)
@@ -148,7 +151,9 @@ def coverage_report(
     wardrobe: list[Garment],
     cv: StyleCV,
     rules: list[Rule],
-    source: str | None = None,
+    source: str | None = "expert",
 ) -> dict[str, int]:
-    """Labels per rule. A rule at zero has a weight nothing can falsify."""
+    """Labels per rule. A rule at zero has a weight nothing can falsify.
+
+    Expert labels only by default; source=None counts every label."""
     return _labelled_rule_counts(store, wardrobe, cv, rules, source=source)

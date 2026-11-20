@@ -8,7 +8,7 @@ constraint on the product, enforced in code and tests, not an aspiration.
 **Describe garments, geometry and colour. Never describe a body as a problem.**
 
 Every message the engine emits is rendered from a rule that fired, so the policy
-is enforceable by reviewing fourteen `explain` templates and three rejection
+is enforceable by reviewing fifteen `explain` templates and three rejection
 messages, rather than by hoping a language model behaves.
 
 ## Specifically

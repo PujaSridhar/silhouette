@@ -359,9 +359,10 @@ const norm=(x,lo,hi)=>x==null||hi===lo?0:Math.max(0,Math.min(1,(x-lo)/(hi-lo)));
 const longOuter=s=>s&&["midi","maxi"].includes(s);
 const COND={
  high_break_elongates:{when:(o,f)=>f.break_ratio!==null
-   &&(["high","super_high"].includes(o.bottom&&o.bottom.rise)
-     ||["empire","natural"].includes(o.dress&&o.dress.waist_seam))&&f.hem_drop<=0.01
+   &&["high","super_high"].includes(o.bottom&&o.bottom.rise)&&f.hem_drop<=0.01
    &&f.break_ratio>=0.26&&f.break_ratio<=0.43,score:(o,f)=>norm(f.lift,0,0.12)},
+ high_seam_elongates:{when:(o,f)=>f.break_source==="dress_seam"&&f.break_ratio!==null
+   &&f.break_ratio>=0.22&&f.break_ratio<=0.43,score:(o,f)=>norm(f.lift,0,0.20)},
  untucked_hem_cancels_the_rise:{when:(o,f)=>
    ["high","super_high"].includes(o.bottom&&o.bottom.rise)&&f.hem_drop>0.015,
    score:(o,f)=>-norm(f.hem_drop,0,0.12)},

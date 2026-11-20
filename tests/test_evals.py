@@ -339,3 +339,40 @@ def test_source_filtering_isolates_expert_from_bootstrap(tmp_path, wardrobe, cv,
     assert rep.n_repeats == 0
     assert rep.self_agreement_qwk is None
     assert all(n == 0 for n in rep.coverage.values())
+
+
+def test_two_expert_labels_are_not_drowned_by_fifty_bootstrap(tmp_path, wardrobe, cv, rules):
+    """Work-order T2 acceptance: with 2 expert and 50 bootstrap labels in one
+    store, coverage and the labelling queue see only the 2 expert labels."""
+    import dataclasses
+
+    from silhouette.evals.sampling import coverage_report
+
+    st = LabelStore(tmp_path / "l.jsonl")
+    tasks = next_batch(wardrobe, cv, rules, st, n=52, contexts=["office"])
+    assert len(tasks) == 52
+    labels = make_labels(tasks, rules, seed=2)
+    expert = [dataclasses.replace(l, id=f"exp_{i}", source="expert") for i, l in enumerate(labels[:2])]
+    bootstrap = labels[2:]
+    assert len(bootstrap) == 50 and all(l.source == "bootstrap" for l in bootstrap)
+    for l in expert + bootstrap:
+        st.append(l)
+
+    # (a) coverage counts only what the two expert labels exercise.
+    expert_only = LabelStore(tmp_path / "expert_only.jsonl")
+    for l in expert:
+        expert_only.append(l)
+    assert coverage_report(st, wardrobe, cv, rules) == coverage_report(
+        expert_only, wardrobe, cv, rules
+    )
+    assert sum(coverage_report(st, wardrobe, cv, rules, source=None).values()) > sum(
+        coverage_report(st, wardrobe, cv, rules).values()
+    )
+
+    # (b) the queue skips the expert-rated outfits but still serves ones that
+    # only a bootstrap label has covered.
+    served = {t.key for t in next_batch(wardrobe, cv, rules, st, n=500, contexts=["office"])}
+    expert_keys = {t.key for t in tasks[:2]}
+    bootstrap_keys = {t.key for t in tasks[2:]}
+    assert not (served & expert_keys)
+    assert bootstrap_keys <= served

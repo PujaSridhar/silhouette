@@ -15,13 +15,13 @@ def feat(cv, **kw):
 def test_true_leg_ratio_is_anatomy_only(cv, W):
     """Shoes and clothes must never change the anatomical reference."""
     bare = feat(cv, top=None, bottom=None)
-    heeled = feat(
-        cv,
-        top=W["top_crop_rib_ivory"],
-        bottom=W["bot_wide_blk"],
-        shoe=W["shoe_heel_blk_block"],
-    )
-    assert bare.true_leg == heeled.true_leg == pytest.approx(0.5)
+    clothes = dict(top=W["top_crop_rib_ivory"], bottom=W["bot_wide_blk"])
+    flat = feat(cv, **clothes)
+    heeled = feat(cv, **clothes, shoe=W["shoe_heel_blk_block"])
+    assert W["shoe_heel_blk_block"].heel_cm > 0
+    assert bare.true_leg == flat.true_leg == heeled.true_leg == pytest.approx(0.5)
+    # the heel must still move what the eye reads, or this test proves nothing
+    assert heeled.lift != pytest.approx(flat.lift)
 
 
 def test_outfit_label_handles_empty_and_missing_top_when_tucked(W):

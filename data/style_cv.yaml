@@ -37,16 +37,6 @@ goals:
   - elongate_lower_body
   - balance_lower_volume
 
-palette:
-  preferred_contrast: medium
-  neutrals: ["#1C1C1C", "#F2EFE9", "#E8DFCB", "#3A3A3C"]
-
-constraints:
-  hard:
-    - all_items_clean
-    - within_context_formality_band
-    - within_context_warmth_band
-
 contexts:
   - name: weekend
     formality_floor: 0.15

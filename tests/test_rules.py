@@ -29,7 +29,16 @@ def test_high_break_elongates_does_not_fire_on_a_low_rise(fired_ids, W):
     assert "high_break_elongates" not in fired_ids(o, "weekend")
 
 
-def test_high_break_elongates_fires_on_empire_and_natural_seam_dresses(fired_ids, W):
+def test_high_break_elongates_is_for_waistbands_not_dress_seams(fired_ids, W):
+    """Dresses get their proportion credit from high_seam_elongates instead,
+    so this rule's scores for top-and-bottom outfits stay as measured."""
+    empire = Outfit(dress=W["dress_anarkali_maroon"], shoe=W["shoe_heel_blk_block"])
+    natural = Outfit(dress=W["dress_wrap_floral"], shoe=W["shoe_heel_blk_block"])
+    assert "high_break_elongates" not in fired_ids(empire, "wedding_function")
+    assert "high_break_elongates" not in fired_ids(natural, "dinner")
+
+
+def test_high_seam_elongates_fires_on_empire_and_natural_seam_dresses(fired_ids, W):
     empire = Outfit(dress=W["dress_anarkali_maroon"], shoe=W["shoe_heel_blk_block"])
     natural = Outfit(dress=W["dress_wrap_floral"], shoe=W["shoe_heel_blk_block"])
     column = Outfit(dress=W["dress_saree_teal"], shoe=W["shoe_heel_blk_block"])
@@ -37,10 +46,33 @@ def test_high_break_elongates_fires_on_empire_and_natural_seam_dresses(fired_ids
         dress=dataclasses.replace(W["dress_wrap_floral"], waist_seam="drop"),
         shoe=W["shoe_heel_blk_block"],
     )
-    assert "high_break_elongates" in fired_ids(empire, "wedding_function")
-    assert "high_break_elongates" in fired_ids(natural, "dinner")
-    assert "high_break_elongates" not in fired_ids(column, "wedding_function")
-    assert "high_break_elongates" not in fired_ids(drop, "dinner")
+    assert "high_seam_elongates" in fired_ids(empire, "wedding_function")
+    assert "high_seam_elongates" in fired_ids(natural, "dinner")
+    # the saree has no seam at all: it is a column, not a high break
+    assert "high_seam_elongates" not in fired_ids(column, "wedding_function")
+    assert "high_seam_elongates" not in fired_ids(drop, "dinner")
+
+
+def test_high_seam_elongates_credits_the_anarkali_beyond_a_waistband_ceiling(verdict_for, W):
+    """The anarkali's lift (+0.19) is past the 0.12 that saturates the waistband
+    rule; the seam rule's 0.20 ceiling is what lets that difference show."""
+    _f, v = verdict_for(
+        Outfit(dress=W["dress_anarkali_maroon"], shoe=W["shoe_heel_blk_block"]), "wedding_function"
+    )
+    fr = next(fr for fr in v.fired if fr.rule.id == "high_seam_elongates")
+    assert 0.0 < fr.contribution < fr.rule.weight
+    assert "seam sits at 31%" in fr.message
+
+
+def test_high_seam_elongates_never_fires_on_top_and_bottom_outfits(wardrobe, cv, rules):
+    from silhouette.solver import candidates, score
+
+    for o in candidates(wardrobe, cv.frame):
+        if o.dress is not None:
+            continue
+        for name in cv.contexts:
+            s = score(o, cv, cv.context(name), rules)
+            assert "high_seam_elongates" not in {fr.rule.id for fr in s.verdict.fired}, o.label()
 
 
 def test_untucked_hem_cancels_the_rise(fired_ids, verdict_for, W):

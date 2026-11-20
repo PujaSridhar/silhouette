@@ -70,7 +70,10 @@ class LabelStore:
             pairs.append((group[0], group[-1]))
         return pairs
 
-    def labelled_keys(self, source: str | None = None) -> set[str]:
+    def labelled_keys(self, source: str | None = "expert") -> set[str]:
+        """Outfits already rated. Expert labels by default, so the labelling
+        queue never skips an outfit that only the synthetic rater has seen.
+        Pass source=None for every source."""
         pool = self.all() if source is None else [l for l in self.all() if l.source == source]
         return {l.outfit_key for l in pool}
 
