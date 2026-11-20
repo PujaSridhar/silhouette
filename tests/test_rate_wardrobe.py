@@ -152,3 +152,74 @@ def test_every_unrated_piece_is_offered(tool):
 def test_only_draped_pieces_ask_for_a_lower_volume(tool):
     for it in tool.items():
         assert it["two_part"] == (it["category"] == "dress"), it["id"]
+
+
+# --- the word scales --------------------------------------------------------
+#
+# The numbers are hers and the words are the interface to them, so both are
+# pinned here: a silent edit to either changes what every rating means, and
+# the volumes already recorded would no longer be comparable with later ones.
+
+def test_the_default_volume_scale(tool):
+    assert tool.VOLUME_SCALES["default"] == [
+        ("Fitted", 0.85), ("Close", 1.0), ("Relaxed", 1.2),
+        ("Loose", 1.4), ("Oversized", 1.65)]
+
+
+def test_bottoms_get_their_own_volume_scale(tool):
+    assert tool.VOLUME_SCALES["bottom"] == [
+        ("Skinny", 0.85), ("Straight", 1.1), ("Relaxed", 1.4),
+        ("Wide", 1.85), ("Very wide", 2.1)]
+
+
+def test_the_skirt_structure_and_formality_scales(tool):
+    assert tool.VOLUME_LOWER_SCALE == [("Narrow", 1.1), ("A-line", 1.4), ("Full", 1.9)]
+    assert tool.STRUCTURE_SCALE == [("Soft", 0.15), ("Medium", 0.4), ("Stiff", 0.75)]
+    assert tool.FORMALITY_SCALE == [("Casual", 0.25), ("Smart", 0.55), ("Dressy", 0.85)]
+
+
+@pytest.mark.parametrize("category", ["top", "outer", "dress", "shoe", "drape"])
+def test_everything_that_is_not_a_bottom_uses_the_default_scale(tool, category):
+    assert tool.volume_scale(category) is tool.VOLUME_SCALES["default"]
+
+
+def test_a_bottom_uses_the_bottom_scale(tool):
+    assert tool.volume_scale("bottom") is tool.VOLUME_SCALES["bottom"]
+
+
+def test_every_piece_is_offered_a_full_set_of_buttons(tool):
+    for it in tool.items():
+        assert len(it["volume_steps"]) == 5, it["id"]
+        assert len(it["structure_steps"]) == 3, it["id"]
+        assert len(it["formality_steps"]) == 3, it["id"]
+        assert len(it["volume_lower_steps"]) == 3, it["id"]
+        expect = "Skinny" if it["category"] == "bottom" else "Fitted"
+        assert it["volume_steps"][0]["label"] == expect, it["id"]
+
+
+def test_a_button_value_round_trips_into_the_csv(tmp_path, tool):
+    p = tmp_path / "w.csv"
+    _write(p, [_row("a", category="bottom")])
+    tool.REAL = p
+    wide = dict(tool.VOLUME_SCALES["bottom"])["Wide"]
+    tool.save("a", {"volume": str(wide), "structure": "0.4", "formality": "0.25"})
+    row = next(csv.DictReader(open(p)))
+    assert row["volume"] == "1.85" and row["structure"] == "0.4"
+
+
+# --- order ------------------------------------------------------------------
+
+def test_pieces_seen_in_two_or_more_photos_come_first(tool):
+    got = tool.items()
+    counts = [len(i["photos"]) for i in got]
+    first_single = next((n for n, c in enumerate(counts) if c < 2), len(counts))
+    assert all(c >= 2 for c in counts[:first_single])
+    assert all(c < 2 for c in counts[first_single:]), "a multi-photo piece is stranded"
+    assert first_single >= 1, "nothing has two photos; the ordering is untested"
+
+
+def test_ordering_loses_nobody(tool):
+    ids = [i["id"] for i in tool.items()]
+    real = [r["id"] for r in csv.DictReader(open(ROOT / "data" / "wardrobe_real.csv"))]
+    assert sorted(ids) == sorted(real)
+    assert len(ids) == len(set(ids))
