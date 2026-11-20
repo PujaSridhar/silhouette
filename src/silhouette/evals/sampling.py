@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..models import Garment, Outfit, StyleCV
+from ..models import Garment, Outfit, StyleCV, outfit_slot_key
 from ..rules import Rule
 from ..solver import ScoredOutfit, candidates, score
 from .store import LabelStore
@@ -38,12 +38,11 @@ class Task:
 
     @property
     def key(self) -> str:
-        slots = (
-            self.outfit.top, self.outfit.bottom, self.outfit.dress,
-            self.outfit.outer, self.outfit.shoe,
-        )
-        ids = [g.id if g else "-" for g in slots]
-        return "|".join(ids) + f"|tucked={self.outfit.tucked}|{self.context}"
+        def gid(slot: str) -> str | None:
+            g = getattr(self.outfit, slot)
+            return g.id if g else None
+
+        return outfit_slot_key(gid) + f"|tucked={self.outfit.tucked}|{self.context}"
 
 
 def outfit_from_label(label, index: dict[str, Garment]) -> Outfit:
@@ -54,7 +53,7 @@ def outfit_from_label(label, index: dict[str, Garment]) -> Outfit:
 
     return Outfit(
         top=g("top"), bottom=g("bottom"), dress=g("dress"),
-        outer=g("outer"), shoe=g("shoe"),
+        outer=g("outer"), shoe=g("shoe"), drape=g("drape"),
         tucked=bool(label.outfit.get("tucked")),
     )
 

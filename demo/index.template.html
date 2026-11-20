@@ -230,7 +230,9 @@ code{font-family:var(--f-mono);font-size:.92em;background:var(--sunk);padding:1p
 <script>
 "use strict";
 const DATA = JSON.parse(document.getElementById("engine-data").textContent);
-const G = Object.fromEntries(DATA.garments.map(g => [g.id, g]));
+// parityGarments (the sample drapes) are only for the parity check: looked up
+// by id, never enumerated, so the demo's own suggestions are unchanged.
+const G = Object.fromEntries(DATA.garments.concat(DATA.parityGarments || []).map(g => [g.id, g]));
 const CTX = Object.fromEntries(DATA.styleCV.contexts.map(c => [c.name, c]));
 const RULES = DATA.rules;
 
@@ -327,7 +329,7 @@ const seamY      = (g,L) => { const fn = SEAM[(g && g.waist_seam) || "none"]; re
 const lowerVol = g => g.volume_lower != null ? g.volume_lower : g.volume;
 const mean = xs => xs.length ? xs.reduce((a,b) => a+b, 0) / xs.length : 0;
 
-function items(o){ return [o.top,o.bottom,o.dress,o.outer,o.shoe].filter(Boolean); }
+function items(o){ return [o.top,o.bottom,o.dress,o.outer,o.shoe,o.drape].filter(Boolean); }
 
 function compute(o, frame){
   const L = frame.landmarks, H = frame.heightCm;
@@ -390,6 +392,11 @@ function compute(o, frame){
    duplicated, which is what the parity fixture checks. */
 const norm = (x,lo,hi) => x == null || hi === lo ? 0 : Math.max(0, Math.min(1, (x-lo)/(hi-lo)));
 const has = s => s && ["midi","maxi"].includes(s);
+/* the base a dupatta belongs to; shared by the two dupatta rules, as in core.yaml */
+const takesDupatta = o => (!!o.top && o.top.subcategory === "kurta")
+  || (!!o.bottom && ["lehenga","sharara","gharara"].includes(o.bottom.subcategory))
+  || (!!o.dress && ["anarkali","lehenga"].includes(o.dress.subcategory));
+const isDupatta = o => !!o.drape && o.drape.subcategory === "dupatta";
 const COND = {
   high_break_elongates: {
     when: (o,f) => f.break_ratio !== null && ["high","super_high"].includes(o.bottom && o.bottom.rise)
@@ -409,6 +416,11 @@ const COND = {
     when: (o) => has(o.outer && o.outer.length), score: () => 1.0 },
   drape_reads_as_one_column: {
     when: (o,f) => f.is_column && !!o.dress, score: () => 1.0 },
+  dupatta_completes_the_set: {
+    when: (o) => isDupatta(o) && takesDupatta(o),
+    score: (o,f,fr,c) => 0.4 + 0.6 * norm(c.formality_floor, 0.25, 0.68) },
+  dupatta_without_its_set: {
+    when: (o) => isDupatta(o) && !takesDupatta(o), score: () => -1.0 },
   fitted_top_counterweights_volume: {
     when: (o,f,fr) => fr.hipToShoulder > 1.05 && f.lower_volume >= 1.30 && f.upper_volume <= 1.00,
     score: () => 1.0 },
@@ -440,6 +452,9 @@ const COND = {
     score: (o,f,fr,c) => -norm(f.max_formality - c.formality_ceiling, 0.0, 0.35) },
   meets_context_formality_floor: {
     forbid: (o,f,fr,c) => f.min_formality < c.formality_floor },
+  one_drape_at_a_time: {
+    forbid: (o) => !!o.drape && !!o.dress
+      && (o.dress.subcategory === "saree" || o.dress.fit === "draped") },
   everything_must_be_available: {
     forbid: (o) => items(o).some(g => g.availability !== "clean") },
   within_context_warmth_band: {
@@ -464,7 +479,7 @@ function factsFor(o, f, c){
     ctx_name: c.name, formality_floor: c.formality_floor,
     formality_ceiling: c.formality_ceiling, clo_min: c.clo_min, clo_max: c.clo_max,
     top_name: nm(o.top), bottom_name: nm(o.bottom), dress_name: nm(o.dress),
-    outer_name: nm(o.outer), shoe_name: nm(o.shoe),
+    outer_name: nm(o.outer), shoe_name: nm(o.shoe), drape_name: nm(o.drape),
     dirty: items(o).filter(g => g.availability !== "clean").map(g => g.name).join(", "),
   });
 }
@@ -513,14 +528,15 @@ function allCandidates(frame){
   const L = frame.landmarks;
   const out = [];
   const outers = [null].concat(byCat("outer"));
+  const drapes = [null].concat(byCat("drape"));
   for (const shoe of byCat("shoe")) for (const outer of outers){
     for (const top of byCat("top")) for (const bottom of byCat("bottom")){
-      out.push({ top, bottom, dress: null, outer, shoe, tucked: false });
-      if (tuckChanges(top, bottom, L))
-        out.push({ top, bottom, dress: null, outer, shoe, tucked: true });
+      for (const tucked of (tuckChanges(top, bottom, L) ? [false, true] : [false]))
+        for (const drape of drapes)
+          out.push({ top, bottom, dress: null, outer, shoe, tucked, drape });
     }
-    for (const dress of byCat("dress"))
-      out.push({ top: null, bottom: null, dress, outer, shoe, tucked: false });
+    for (const dress of byCat("dress")) for (const drape of drapes)
+      out.push({ top: null, bottom: null, dress, outer, shoe, tucked: false, drape });
   }
   return out;
 }
@@ -555,6 +571,7 @@ function runParity(){
       dress: row.outfit.dress ? G[row.outfit.dress] : null,
       outer: row.outfit.outer ? G[row.outfit.outer] : null,
       shoe: row.outfit.shoe ? G[row.outfit.shoe] : null,
+      drape: row.outfit.drape ? G[row.outfit.drape] : null,
       tucked: !!row.outfit.tucked,
     };
     const s = scoreOutfit(o, frame, row.context, goals);

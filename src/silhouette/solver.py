@@ -58,20 +58,30 @@ def _tuck_changes_anything(top: Garment, bottom: Garment, frame: Frame) -> bool:
 
 def candidates(wardrobe: list[Garment], frame: Frame) -> Iterator[Outfit]:
     """Every structurally valid assembly: (top + bottom) or dress, plus shoe,
-    plus an optional outer layer."""
+    plus an optional outer layer, plus an optional drape.
+
+    Structure is all this decides. Whether a dupatta belongs with a given
+    base is a styling call, so it lives in the rules (rules/core.yaml), where a
+    stylist can read and change it. A wardrobe with no drape enumerates
+    exactly as it did before the slot existed, in the same order.
+    """
     cat = by_category(wardrobe)
     shoes = cat.get("shoe", [])
     outers: list[Garment | None] = [None, *cat.get("outer", [])]
+    drapes: list[Garment | None] = [None, *cat.get("drape", [])]
 
     for shoe in shoes:
         for outer in outers:
             for top in cat.get("top", []):
                 for bottom in cat.get("bottom", []):
-                    yield Outfit(top=top, bottom=bottom, outer=outer, shoe=shoe)
-                    if _tuck_changes_anything(top, bottom, frame):
-                        yield Outfit(top=top, bottom=bottom, outer=outer, shoe=shoe, tucked=True)
+                    tucks = [False, True] if _tuck_changes_anything(top, bottom, frame) else [False]
+                    for tucked in tucks:
+                        for drape in drapes:
+                            yield Outfit(top=top, bottom=bottom, outer=outer, shoe=shoe,
+                                         tucked=tucked, drape=drape)
             for dress in cat.get("dress", []):
-                yield Outfit(dress=dress, outer=outer, shoe=shoe)
+                for drape in drapes:
+                    yield Outfit(dress=dress, outer=outer, shoe=shoe, drape=drape)
 
 
 def score(outfit: Outfit, cv: StyleCV, ctx: Context, rules: list[Rule]) -> ScoredOutfit:

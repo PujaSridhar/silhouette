@@ -94,6 +94,54 @@ rules:
       The {dress_name} has no horizontal break at all, so there is nothing to
       divide the line - it reads as one continuous column.
 
+  # -------------------------------------------------------------------- drapes
+  #
+  # A drape (a dupatta, a stole) is an optional layer over everything else.
+  # It counts toward formality, warmth and pattern like any garment, but it
+  # does not move the break and its volume is not read: open, pinned or over
+  # one shoulder changes its width more than the cloth does. What it does to
+  # an outfit is said here instead.
+  #
+  # Deliberately absent: a drape counterpart to long_outer_adds_vertical_line.
+  # Worn open, a dupatta's ends do draw two long lines, but worn pinned across
+  # the body they do not, and the engine cannot tell which. A flat bonus for
+  # any long drape also made a stole improve every outfit it was added to.
+  #
+  # The two dupatta rules below share one condition, "the base is a set a
+  # dupatta belongs to", negated in the second. Change both together; a test
+  # checks they never fire on the same outfit and that one always does.
+
+  - id: dupatta_completes_the_set
+    kind: soft
+    weight: 0.40
+    note: >
+      A kurta (whatever it is worn over), a lehenga, sharara or gharara, or an
+      anarkali is cut to be worn with a dupatta, and the dressier the occasion
+      the more it is missed. A salwar on its own does not count: it is half of
+      a salwar kameez, and the kurta is the other half. The credit grows with
+      the context's formality floor: 0.4 of the weight up to campus, the full
+      weight from a wedding function's 0.68 upward.
+    when: "drape.subcategory == 'dupatta' and (top.subcategory == 'kurta' or bottom.subcategory in ('lehenga', 'sharara', 'gharara') or dress.subcategory in ('anarkali', 'lehenga'))"
+    score: "0.4 + 0.6 * norm(ctx.formality_floor, 0.25, 0.68)"
+    explain: >
+      The {drape_name} finishes the set it was made for, and it counts for
+      more the dressier the occasion.
+
+  - id: dupatta_without_its_set
+    kind: soft
+    weight: 0.50
+    note: >
+      Soft, not a veto: a dupatta over a white shirt and jeans is a real
+      fusion look. But it is a deliberate one, so the engine should not
+      reach for it unprompted. Stoles and shawls are not covered here; they
+      go over anything.
+    when: "drape.subcategory == 'dupatta' and not (top.subcategory == 'kurta' or bottom.subcategory in ('lehenga', 'sharara', 'gharara') or dress.subcategory in ('anarkali', 'lehenga'))"
+    score: "-1.0"
+    explain: >
+      The {drape_name} is cut to finish a kurta, a lehenga or an anarkali.
+      Over these pieces it reads as an extra layer rather than part of the
+      outfit, which can work as fusion but is a choice to make on purpose.
+
   # ------------------------------------------------------------------- balance
 
   - id: fitted_top_counterweights_volume
@@ -217,6 +265,16 @@ rules:
     reject: >
       The least formal piece sits at {min_formality:.2f} and {ctx_name} needs at
       least {formality_floor:.2f}.
+
+  - id: one_drape_at_a_time
+    kind: hard
+    note: >
+      A saree is already a drape, and its pallu is the part a dupatta would
+      be. A second one on top is not an outfit anyone wears.
+    forbid: "drape and (dress.subcategory == 'saree' or dress.fit == 'draped')"
+    reject: >
+      The {dress_name} is already draped, so the {drape_name} would be a
+      second pallu over the first.
 
   - id: everything_must_be_available
     kind: hard

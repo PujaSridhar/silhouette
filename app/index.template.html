@@ -313,7 +313,7 @@ const hemYf=(g,L)=>(g&&LEN[g.length])?LEN[g.length](L):null;
 const seamY=(g,L)=>{const fn=SEAM[(g&&g.waist_seam)||"none"];return fn?fn(L):null;};
 const lowVolOf=g=>g.volume_lower!=null?g.volume_lower:g.volume;
 const mean=xs=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;
-const itemsOf=o=>[o.top,o.bottom,o.dress,o.outer,o.shoe].filter(Boolean);
+const itemsOf=o=>[o.top,o.bottom,o.dress,o.outer,o.shoe,o.drape].filter(Boolean);
 
 function compute(o,frame){
   const L=frame.landmarks,H=frame.heightCm;
@@ -357,6 +357,11 @@ function compute(o,frame){
 
 const norm=(x,lo,hi)=>x==null||hi===lo?0:Math.max(0,Math.min(1,(x-lo)/(hi-lo)));
 const longOuter=s=>s&&["midi","maxi"].includes(s);
+/* the base a dupatta belongs to; shared by the two dupatta rules, as in core.yaml */
+const takesDupatta=o=>(!!o.top&&o.top.subcategory==="kurta")
+  ||(!!o.bottom&&["lehenga","sharara","gharara"].includes(o.bottom.subcategory))
+  ||(!!o.dress&&["anarkali","lehenga"].includes(o.dress.subcategory));
+const isDupatta=o=>!!o.drape&&o.drape.subcategory==="dupatta";
 const COND={
  high_break_elongates:{when:(o,f)=>f.break_ratio!==null
    &&["high","super_high"].includes(o.bottom&&o.bottom.rise)&&f.hem_drop<=0.01
@@ -370,6 +375,9 @@ const COND={
    score:(o,f)=>norm(f.heel_cm,2.0,9.0)},
  long_outer_adds_vertical_line:{when:o=>longOuter(o.outer&&o.outer.length),score:()=>1.0},
  drape_reads_as_one_column:{when:(o,f)=>f.is_column&&!!o.dress,score:()=>1.0},
+ dupatta_completes_the_set:{when:o=>isDupatta(o)&&takesDupatta(o),
+   score:(o,f,fr,c)=>0.4+0.6*norm(c.formality_floor,0.25,0.68)},
+ dupatta_without_its_set:{when:o=>isDupatta(o)&&!takesDupatta(o),score:()=>-1.0},
  fitted_top_counterweights_volume:{when:(o,f,fr)=>fr.hipToShoulder>1.05
    &&f.lower_volume>=1.30&&f.upper_volume<=1.00,score:()=>1.0},
  volume_on_volume_loses_the_line:{when:(o,f)=>f.lower_volume>=1.30&&f.upper_volume>1.15,
@@ -393,6 +401,8 @@ const COND={
  overdressed_for_context:{when:(o,f,fr,c)=>f.max_formality>c.formality_ceiling,
    score:(o,f,fr,c)=>-norm(f.max_formality-c.formality_ceiling,0,0.35)},
  meets_context_formality_floor:{forbid:(o,f,fr,c)=>f.min_formality<c.formality_floor},
+ one_drape_at_a_time:{forbid:o=>!!o.drape&&!!o.dress
+   &&(o.dress.subcategory==="saree"||o.dress.fit==="draped")},
  everything_must_be_available:{forbid:o=>itemsOf(o).some(g=>(g.availability||"clean")!=="clean")},
  within_context_warmth_band:{forbid:(o,f,fr,c)=>f.total_clo<c.clo_min||f.total_clo>c.clo_max},
 };
@@ -413,7 +423,7 @@ function factsFor(o,f,c){
     formality_floor:c.formality_floor,formality_ceiling:c.formality_ceiling,
     clo_min:c.clo_min,clo_max:c.clo_max,
     top_name:nm(o.top),bottom_name:nm(o.bottom),dress_name:nm(o.dress),
-    outer_name:nm(o.outer),shoe_name:nm(o.shoe),
+    outer_name:nm(o.outer),shoe_name:nm(o.shoe),drape_name:nm(o.drape),
     dirty:itemsOf(o).filter(g=>(g.availability||"clean")!=="clean").map(g=>g.name).join(", ")});
 }
 const derived=frame=>({hipToShoulder:frame.widths.hip/frame.widths.shoulder,
@@ -449,14 +459,15 @@ function tuckChanges(top,bottom,L){
 function enumerate(gs,frame){
   const L=frame.landmarks,by=c=>gs.filter(g=>g.category===c);
   const tops=by("top"),bots=by("bottom"),dresses=by("dress");
-  const shoes=by("shoe"),outers=[null].concat(by("outer"));
+  const shoes=by("shoe"),outers=[null].concat(by("outer")),drapes=[null].concat(by("drape"));
   const out=[];
   for(const shoe of (shoes.length?shoes:[null]))for(const outer of outers){
     for(const t of tops)for(const b of bots){
-      out.push({top:t,bottom:b,dress:null,outer,shoe,tucked:false});
-      if(tuckChanges(t,b,L))out.push({top:t,bottom:b,dress:null,outer,shoe,tucked:true});
+      for(const tucked of (tuckChanges(t,b,L)?[false,true]:[false]))
+        for(const drape of drapes)out.push({top:t,bottom:b,dress:null,outer,shoe,tucked,drape});
     }
-    for(const d of dresses)out.push({top:null,bottom:null,dress:d,outer,shoe,tucked:false});
+    for(const d of dresses)for(const drape of drapes)
+      out.push({top:null,bottom:null,dress:d,outer,shoe,tucked:false,drape});
   }
   return out;
 }
@@ -495,8 +506,8 @@ const PRESETS={
   P({t:"Fine knit / turtleneck",length:"waist",volume:0.80,structure:0.25,tuckable:true,formality:0.50,clo:0.30}),
   P({t:"Chunky sweater",length:"hip",volume:1.45,structure:0.30,formality:0.35,clo:0.50}),
   P({t:"Oversized hoodie",length:"hip",volume:1.65,structure:0.15,formality:0.18,clo:0.45}),
-  P({t:"Short kurta",length:"tunic",volume:1.20,structure:0.35,formality:0.55,clo:0.22}),
-  P({t:"Long kurta",length:"knee",volume:1.25,structure:0.40,formality:0.62,clo:0.20}),
+  P({t:"Short kurta",sub:"kurta",length:"tunic",volume:1.20,structure:0.35,formality:0.55,clo:0.22}),
+  P({t:"Long kurta",sub:"kurta",length:"knee",volume:1.25,structure:0.40,formality:0.62,clo:0.20}),
   P({t:"Corset / bustier",length:"waist",volume:0.75,structure:0.85,formality:0.65,clo:0.10}),
  ],
  bottom:[
@@ -510,7 +521,7 @@ const PRESETS={
   P({t:"Low-rise jean",rise:"low",length:"full",volume:1.05,structure:0.30,formality:0.30,clo:0.38}),
   P({t:"Wide linen pant",rise:"high",length:"ankle",volume:1.80,structure:0.30,formality:0.45,clo:0.22}),
   P({t:"Palazzo",rise:"high",length:"full",volume:2.10,structure:0.20,formality:0.50,clo:0.22}),
-  P({t:"Salwar",rise:"high",length:"ankle",volume:1.70,structure:0.25,formality:0.60,clo:0.20}),
+  P({t:"Salwar",sub:"salwar",rise:"high",length:"ankle",volume:1.70,structure:0.25,formality:0.60,clo:0.20}),
   P({t:"Pencil skirt",rise:"high",length:"knee",volume:0.80,structure:0.70,formality:0.75,clo:0.20}),
   P({t:"Bias midi skirt",rise:"high",length:"midi",volume:1.30,structure:0.35,formality:0.66,clo:0.18}),
   P({t:"A-line midi skirt",rise:"high",length:"midi",volume:1.55,structure:0.40,formality:0.60,clo:0.20}),
@@ -519,9 +530,9 @@ const PRESETS={
   P({t:"Leggings",rise:"high",length:"ankle",volume:0.70,structure:0.10,formality:0.20,clo:0.22}),
  ],
  dress:[
-  P({t:"Saree",waist_seam:"none",length:"maxi",volume:1.00,volume_lower:1.50,structure:0.30,formality:0.90,clo:0.35}),
-  P({t:"Anarkali",waist_seam:"empire",length:"maxi",volume:0.95,volume_lower:1.90,structure:0.50,formality:0.88,clo:0.40}),
-  P({t:"Lehenga",waist_seam:"drop",length:"maxi",volume:0.90,volume_lower:2.00,structure:0.55,formality:0.92,clo:0.40}),
+  P({t:"Saree",sub:"saree",waist_seam:"none",length:"maxi",volume:1.00,volume_lower:1.50,structure:0.30,formality:0.90,clo:0.35}),
+  P({t:"Anarkali",sub:"anarkali",waist_seam:"empire",length:"maxi",volume:0.95,volume_lower:1.90,structure:0.50,formality:0.88,clo:0.40}),
+  P({t:"Lehenga",sub:"lehenga",waist_seam:"drop",length:"maxi",volume:0.90,volume_lower:2.00,structure:0.55,formality:0.92,clo:0.40}),
   P({t:"Shift dress",waist_seam:"none",length:"knee",volume:1.10,volume_lower:1.10,structure:0.40,formality:0.60,clo:0.25}),
   P({t:"Wrap dress",waist_seam:"natural",length:"midi",volume:1.00,volume_lower:1.25,structure:0.45,formality:0.58,clo:0.22}),
   P({t:"Slip dress",waist_seam:"none",length:"midi",volume:0.95,volume_lower:1.00,structure:0.20,formality:0.55,clo:0.16}),
@@ -540,7 +551,10 @@ const PRESETS={
   P({t:"Long duster coat",length:"maxi",volume:1.40,structure:0.50,formality:0.60,clo:0.50}),
   P({t:"Trench coat",length:"midi",volume:1.35,structure:0.65,formality:0.62,clo:0.50}),
   P({t:"Waistcoat",length:"hip",volume:0.95,structure:0.80,formality:0.70,clo:0.18}),
-  P({t:"Dupatta / stole",length:"maxi",volume:1.10,structure:0.10,formality:0.70,clo:0.12}),
+ ],
+ drape:[
+  P({t:"Dupatta",sub:"dupatta",length:"maxi",volume:1.00,structure:0.05,formality:0.70,clo:0.08}),
+  P({t:"Stole / shawl",sub:"stole",length:"midi",volume:1.00,structure:0.08,formality:0.45,clo:0.25}),
  ],
  shoe:[
   P({t:"Sneaker",heel_cm:2,structure:0.40,formality:0.30,clo:0.05}),
@@ -684,7 +698,7 @@ const S={clients:[],garments:{},labels:{},activeId:null,tab:"wardrobe",
   rating:{proportion:null,balance:null,formality:null,colour:null,cohesion:null,
     overall:null,would:null,note:""},exportText:null,
   filter:"all",adding:null,ctx:"work",
-  manual:{top:null,bottom:null,dress:null,outer:null,shoe:null,tucked:false},
+  manual:{top:null,bottom:null,dress:null,outer:null,shoe:null,drape:null,tucked:false},
   gaps:null,gapsBusy:false};
 const el=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,
@@ -698,11 +712,13 @@ function outfitLabel(o){
 }
 function makeGarment(cat,preset,colourName,colourHex){
   const g=Object.assign({},preset);
-  delete g.t;
+  delete g.t;delete g.sub;
   // "Denim" + "Denim jacket" should not become "Denim denim jacket".
   const base=preset.t.toLowerCase(),cn=colourName.toLowerCase();
   const name=base.startsWith(cn)?preset.t:colourName+" "+base;
-  return Object.assign(g,{id:uid("g"),category:cat,subcategory:preset.t,
+  // `sub` is the engine's word for the type (the dupatta rules read it);
+  // without one the display name stands in, as it always has.
+  return Object.assign(g,{id:uid("g"),category:cat,subcategory:preset.sub||preset.t,preset:preset.t,
     name,color_hex:colourHex});
 }
 function newClient(name){
@@ -802,18 +818,20 @@ function qwk(a,b,lo,hi){
 }
 
 const LABELS=()=>(S.labels[S.activeId]||[]);
+/* Same shape as models.outfit_slot_key: the drape is appended only when
+   there is one, so every key saved before the slot existed still matches. */
+const slotKey=get=>["top","bottom","dress","outer","shoe"].map(k=>get(k)||"-")
+  .concat(get("drape")?["drape="+get("drape")]:[]).join("|");
 function outfitKeyOf(o,ctx){
-  return [o.top,o.bottom,o.dress,o.outer,o.shoe].map(g=>g?g.id:"-").join("|")
-    +"|t="+(o.tucked?1:0)+"|"+ctx;
+  return slotKey(k=>o[k]?o[k].id:null)+"|t="+(o.tucked?1:0)+"|"+ctx;
 }
 function labelKeyOf(l){
-  return ["top","bottom","dress","outer","shoe"].map(k=>l.outfit[k]||"-").join("|")
-    +"|t="+(l.outfit.tucked?1:0)+"|"+l.context;
+  return slotKey(k=>l.outfit[k])+"|t="+(l.outfit.tucked?1:0)+"|"+l.context;
 }
 function rebuildOutfit(rec){
   const gs=wardrobe(),by=id=>gs.find(g=>g.id===id)||null;
   return {top:by(rec.top),bottom:by(rec.bottom),dress:by(rec.dress),
-    outer:by(rec.outer),shoe:by(rec.shoe),tucked:!!rec.tucked};
+    outer:by(rec.outer),shoe:by(rec.shoe),drape:by(rec.drape),tucked:!!rec.tucked};
 }
 function ruleCountsFromLabels(){
   const c=active(),counts={};
@@ -948,7 +966,7 @@ function labelStats(){
 
 /* ---- wardrobe ---- */
 const CATS=[["all","All"],["top","Tops"],["bottom","Bottoms"],["dress","One-piece"],
-  ["outer","Layers"],["shoe","Shoes"]];
+  ["outer","Layers"],["shoe","Shoes"],["drape","Drapes"]];
 function viewWardrobe(){
   const c=active();
   if(!c)return onboardingHTML();
@@ -974,13 +992,13 @@ function viewWardrobe(){
     <div class="g"><span class="sw" style="background:${esc(g.color_hex)}"></span>
       <span style="min-width:0"><span class="gn">${esc(g.name)}</span>
       <span class="ga">${esc([g.rise,g.length,g.waist_seam,g.heel_cm?g.heel_cm+"cm":null]
-        .filter(Boolean).join(" / ")||g.subcategory)} &middot; vol ${g.volume.toFixed(2)}</span></span>
+        .filter(Boolean).join(" / ")||g.preset||g.subcategory)} &middot; vol ${g.volume.toFixed(2)}</span></span>
       <button class="gx" type="button" data-del="${esc(g.id)}" aria-label="Remove ${esc(g.name)}">&times;</button></div>`).join("")}</div>`
     : `<div class="empty"><h3>Nothing here yet</h3><p>Add a few pieces and the engine starts working. Two taps each.</p></div>`;
   return `<div class="shead"><h2>${esc(c.name)}&rsquo;s wardrobe</h2>
       <p>${gs.length} piece${gs.length===1?"":"s"} &middot; ${enumerate(gs,c.frame).length} possible outfits</p></div>
     <div class="row" style="margin-bottom:14px">
-      ${["top","bottom","dress","outer","shoe"].map(k=>`<button class="btn ghost" type="button" data-add="${k}">+ ${esc(CATS.find(x=>x[0]===k)[1])}</button>`).join("")}
+      ${["top","bottom","dress","outer","shoe","drape"].map(k=>`<button class="btn ghost" type="button" data-add="${k}">+ ${esc(CATS.find(x=>x[0]===k)[1])}</button>`).join("")}
       ${gs.length===0?`<button class="btn quiet" type="button" data-sample>Load a sample wardrobe</button>`:""}
     </div>${add}
     <div class="chips">${CATS.map(([k,l])=>`<button class="chip" type="button" data-filter="${k}" aria-pressed="${S.filter===k}">${esc(l)}</button>`).join("")}</div>
@@ -1003,7 +1021,7 @@ function manualOutfit(){
   const gs=wardrobe(),by=id=>gs.find(g=>g.id===id)||null;
   const m=S.manual;
   return {top:by(m.top),bottom:by(m.bottom),dress:by(m.dress),
-    outer:by(m.outer),shoe:by(m.shoe),tucked:!!m.tucked};
+    outer:by(m.outer),shoe:by(m.shoe),drape:by(m.drape),tucked:!!m.tucked};
 }
 function viewOutfits(){
   const c=active();
@@ -1016,7 +1034,7 @@ function viewOutfits(){
   const o=manualOutfit();
   const has=itemsOf(o).length>0;
   const s=has?scoreOutfit(o,c.frame,ctx,c.goals):null;
-  const f=has?s.f:compute({top:null,bottom:null,dress:null,outer:null,shoe:null,tucked:false},c.frame);
+  const f=has?s.f:compute({top:null,bottom:null,dress:null,outer:null,shoe:null,drape:null,tucked:false},c.frame);
   const picks=bestOutfits(gs,c.frame,ctx,c.goals,3,1);
   const sel=(slot,cat)=>{
     const list=gs.filter(g=>g.category===cat);
@@ -1029,7 +1047,7 @@ function viewOutfits(){
   <div class="studio">
     <div class="card">${figureSVG(c.frame,f)}</div>
     <div>${readoutHTML(f)}
-      <div class="fields">${sel("top","top")}${sel("bottom","bottom")}${sel("dress","dress")}${sel("outer","outer")}${sel("shoe","shoe")}
+      <div class="fields">${sel("top","top")}${sel("bottom","bottom")}${sel("dress","dress")}${sel("outer","outer")}${sel("shoe","shoe")}${sel("drape","drape")}
         <div><label>Tuck</label><div class="row"><input type="checkbox" id="tuckBox" ${S.manual.tucked?"checked":""}><span class="note">tuck the top in</span></div></div></div>
       ${has?verdictHTML(s):`<p class="note" style="margin-top:14px">Choose pieces above, or load one of the suggestions below.</p>`}
     </div>
@@ -1075,7 +1093,7 @@ function viewCV(){
     <div class="card"><h3>Goals</h3><ul class="plain">${c.goals.length?c.goals.map(g=>`<li>${esc(GOAL_LABEL[g]||g)}</li>`).join(""):`<li class="muted">None set &mdash; goal-specific rules stay silent.</li>`}</ul>
       <p class="note" style="margin-top:10px">${liveRules.length} of ${RULES.length} rules apply to you. A goal you have not asked for is never mentioned.</p></div>
     <div class="card"><h3>Wardrobe</h3><dl class="kv">
-      ${["top","bottom","dress","outer","shoe"].map(k=>`<dt>${esc(CATS.find(x=>x[0]===k)[1].toLowerCase())}</dt><dd>${counts[k]||0}</dd>`).join("")}
+      ${["top","bottom","dress","outer","shoe","drape"].map(k=>`<dt>${esc(CATS.find(x=>x[0]===k)[1].toLowerCase())}</dt><dd>${counts[k]||0}</dd>`).join("")}
       <dt>combinations</dt><dd>${enumerate(gs,c.frame).length}</dd></dl></div>
     <div class="card"><h3>Occasion coverage</h3><ul class="plain">${cover.map(([l,ok])=>`<li>${esc(l)} <span style="float:right;color:${ok?"var(--good)":"var(--mark)"}">${ok?"covered":"nothing fits"}</span></li>`).join("")}</ul></div>
   </div>
@@ -1088,7 +1106,9 @@ function viewCV(){
 function computeGaps(){
   const c=active(),gs=wardrobe();
   if(!gs.length)return [];
-  const owned=new Set(gs.map(g=>g.subcategory));
+  // `preset` names the type a garment was added as; older garments carry it
+  // in `subcategory`, from before types had a separate engine name.
+  const owned=new Set(gs.map(g=>g.preset||g.subcategory));
   const base={};
   for(const x of CONTEXTS){
     const b=bestOutfits(gs,c.frame,CTXBY[x.name],c.goals,1,null);
@@ -1315,7 +1335,7 @@ document.addEventListener("click",async(e)=>{
   if(d.del){
     const c=active();
     S.garments[c.id]=(S.garments[c.id]||[]).filter(g=>g.id!==d.del);
-    for(const k of ["top","bottom","dress","outer","shoe"])if(S.manual[k]===d.del)S.manual[k]=null;
+    for(const k of ["top","bottom","dress","outer","shoe","drape"])if(S.manual[k]===d.del)S.manual[k]=null;
     S.gaps=null;render();await Store.deleteGarment(c.id,d.del);setSaveState();return;
   }
   if("sample" in d){const c=active();await addSample(c);S.gaps=null;render();return;}
@@ -1326,7 +1346,7 @@ document.addEventListener("click",async(e)=>{
     const o=p.outfit;
     S.manual={top:o.top?o.top.id:null,bottom:o.bottom?o.bottom.id:null,
       dress:o.dress?o.dress.id:null,outer:o.outer?o.outer.id:null,
-      shoe:o.shoe?o.shoe.id:null,tucked:!!o.tucked};
+      shoe:o.shoe?o.shoe.id:null,drape:o.drape?o.drape.id:null,tucked:!!o.tucked};
     render();window.scrollTo({top:0,behavior:"smooth"});return;
   }
   if(d.ratemode){S.rateMode=d.ratemode;render();return;}
@@ -1345,7 +1365,7 @@ document.addEventListener("click",async(e)=>{
     const label={id:uid("l"),
       outfit:{top:o.top?o.top.id:null,bottom:o.bottom?o.bottom.id:null,
         dress:o.dress?o.dress.id:null,outer:o.outer?o.outer.id:null,
-        shoe:o.shoe?o.shoe.id:null,tucked:!!o.tucked},
+        shoe:o.shoe?o.shoe.id:null,drape:o.drape?o.drape.id:null,tucked:!!o.tucked},
       context:task.ctx,
       overall:r.overall,
       ratings:S.rateMode==="full"?{proportion:r.proportion,balance:r.balance,
@@ -1393,7 +1413,7 @@ document.addEventListener("click",async(e)=>{
 });
 document.addEventListener("change",async(e)=>{
   const t=e.target;
-  if(t.id==="whoSel"){S.activeId=t.value;S.gaps=null;S.rateTask=null;S.rateQueue=[];S.exportText=null;S.manual={top:null,bottom:null,dress:null,outer:null,shoe:null,tucked:false};render();await Store.setActive(t.value);return;}
+  if(t.id==="whoSel"){S.activeId=t.value;S.gaps=null;S.rateTask=null;S.rateQueue=[];S.exportText=null;S.manual={top:null,bottom:null,dress:null,outer:null,shoe:null,drape:null,tucked:false};render();await Store.setActive(t.value);return;}
   if(t.dataset.slot){S.manual[t.dataset.slot]=t.value||null;render();return;}
   if(t.id==="tuckBox"){S.manual.tucked=t.checked;render();return;}
   if(t.dataset.goal){
@@ -1431,7 +1451,8 @@ function runParity(){
   for(const row of P.cases){
     const o={top:row.o.top?G[row.o.top]:null,bottom:row.o.bottom?G[row.o.bottom]:null,
       dress:row.o.dress?G[row.o.dress]:null,outer:row.o.outer?G[row.o.outer]:null,
-      shoe:row.o.shoe?G[row.o.shoe]:null,tucked:!!row.o.tucked};
+      shoe:row.o.shoe?G[row.o.shoe]:null,drape:row.o.drape?G[row.o.drape]:null,
+      tucked:!!row.o.tucked};
     const ctx=P.contexts[row.c];
     const s=scoreOutfit(o,P.frame,ctx,P.goals);
     const why=[];

@@ -24,7 +24,7 @@ import statistics
 from collections.abc import Mapping
 
 from ..geometry import compute
-from ..models import Garment, Outfit, StyleCV
+from ..models import SLOTS, Garment, Outfit, StyleCV
 from ..rules import Rule, evaluate
 from ..solver import candidates
 
@@ -40,7 +40,7 @@ VOLUME_THRESHOLDS: dict[float, tuple[str, str]] = {
     1.30: ("lower", "two balance rules: lower_volume >= 1.30"),
 }
 
-_SLOTS = ("top", "bottom", "dress", "outer", "shoe")
+_SLOTS = SLOTS
 
 
 def _side_values(g: Garment, side: str | None) -> list[float]:

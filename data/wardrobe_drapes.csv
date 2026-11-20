@@ -1,0 +1,4 @@
+id,name,category,subcategory,rise,length,fit,volume,volume_lower,structure,tuckable,neckline,sleeve,pattern,fabric_weight,drape,formality,clo,heel_cm,waist_seam,color_hex,availability
+drape_dupatta_mustard,Mustard chanderi dupatta,drape,dupatta,,maxi,draped,1.0,,0.05,no,,,solid,light,fluid,0.7,0.08,,,#C9962E,clean
+drape_dupatta_bandhani_red,Red bandhani dupatta,drape,dupatta,,maxi,draped,1.0,,0.05,no,,,print,light,fluid,0.62,0.08,,,#A8232E,clean
+drape_stole_grey,Grey wool stole,drape,stole,,midi,draped,1.0,,0.08,no,,,solid,mid,soft,0.45,0.25,,,#7E7C7A,clean

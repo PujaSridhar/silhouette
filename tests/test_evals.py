@@ -173,7 +173,8 @@ def test_sampler_spreads_across_rules(tmp_path, wardrobe, cv, rules):
     st = LabelStore(tmp_path / "l.jsonl")
     tasks = next_batch(wardrobe, cv, rules, st, n=40)
     fired = {fr.rule.id for t in tasks for fr in t.scored.verdict.fired}
-    soft = {r.id for r in rules if r.kind == "soft"}
+    # the sample wardrobe has no drape, so the dupatta rules cannot fire on it
+    soft = {r.id for r in rules if r.kind == "soft" and "dupatta" not in r.id}
     # the unreachable pattern rule cannot appear; everything else should
     assert len(fired) >= len(soft) - 1
 
