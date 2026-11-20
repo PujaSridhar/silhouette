@@ -376,3 +376,41 @@ def test_two_expert_labels_are_not_drowned_by_fifty_bootstrap(tmp_path, wardrobe
     bootstrap_keys = {t.key for t in tasks[2:]}
     assert not (served & expert_keys)
     assert bootstrap_keys <= served
+
+
+# ------------------------------------------------------------- several raters
+
+
+def test_repeats_pair_a_rater_with_themselves_only(tmp_path):
+    """Two stylists rating one outfit is agreement between raters, not the
+    self-agreement ceiling. Pairing them would quietly lower that ceiling."""
+    st = LabelStore(tmp_path / "l.jsonl")
+    st.append(_label(id="a1", labeller="asha", overall=4, created_at="2026-01-01T00:00:00+00:00"))
+    st.append(_label(id="b1", labeller="bea", overall=2, created_at="2026-01-02T00:00:00+00:00"))
+    assert st.repeats() == []
+    st.append(_label(id="a2", labeller="asha", overall=5, created_at="2026-02-01T00:00:00+00:00"))
+    pairs = st.repeats()
+    assert len(pairs) == 1
+    assert {pairs[0][0].labeller, pairs[0][1].labeller} == {"asha"}
+    assert (pairs[0][0].overall, pairs[0][1].overall) == (4, 5)
+
+
+def test_store_counts_labels_per_rater(tmp_path):
+    st = LabelStore(tmp_path / "l.jsonl")
+    st.append(_label(id="a", labeller="asha"))
+    st.append(_label(id="b", labeller="asha", context="weekend"))
+    st.append(_label(id="c", labeller="bea"))
+    assert st.by_labeller() == {"asha": 2, "bea": 1}
+
+
+def test_app_saves_the_rater_not_the_wearer():
+    """The Rate tab used to save the wearer's profile name as the labeller, so
+    every stylist's ratings looked like the wearer's own."""
+    from pathlib import Path
+
+    tpl = (Path(__file__).resolve().parents[1] / "app" / "index.template.html").read_text()
+    assert "labeller:raterName()" in tpl
+    assert "labeller:c.name" not in tpl
+    # A label can't be saved without a rater, and self-agreement groups by rater.
+    assert "return !!raterName()&&" in tpl
+    assert '(l.labeller||"")+"\\u0001"+labelKeyOf(l)' in tpl
