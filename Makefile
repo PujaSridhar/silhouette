@@ -2,7 +2,7 @@ VENV ?= .venv
 PY := $(VENV)/bin/python
 export PYTHONPATH := src
 
-.PHONY: help build test outfit critique gaps week rules demo clean
+.PHONY: help build test outfit critique gaps week rules demo clean sensitivity measure
 
 build:  ## regenerate the published pages from templates + engine exports
 	$(PY) tools/export_demo_data.py
@@ -62,6 +62,12 @@ fit:    ## fit rule weights to labels
 
 coverage: ## labels per rule (SOURCE=expert|bootstrap|all)
 	$(PY) -m silhouette.cli coverage --source $(or $(SOURCE),expert)
+
+sensitivity: ## how precise volume needs to be (W1 target)
+	$(PY) -m silhouette.vision.cli sensitivity --seeds $(or $(SEEDS),200)
+
+measure: ## measured vs hand-judged volume on photos/ (MASKS=masks|masks_model)
+	$(PY) -m silhouette.vision.cli measure --masks $(or $(MASKS),masks)
 
 demo-serve: ## serve the interactive demo
 	$(PY) -m http.server 8787 --directory demo

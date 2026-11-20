@@ -227,10 +227,20 @@ to draw quality conclusions from those labels, and says so on every run — see
 
 ### Deliberately not here yet
 
-No model, no photos, no embeddings, no language model. Every number traces to a
-hand-annotated CSV cell and a rule in a YAML file — which is exactly what makes
-this engine the thing that will judge whether phase 1's vision models are any
-good.
+No trained model, no photos, no embeddings, no language model. Every number
+traces to a hand-annotated CSV cell and a rule in a YAML file — which is exactly
+what makes this engine the thing that will judge whether phase 1's vision models
+are any good.
+
+### W1 — in progress: measuring volume instead of judging it
+
+The code for garment segmentation is in `src/silhouette/vision/`, with a
+training notebook in `notebooks/`. It has not been trained yet. Its success
+criterion is not mask accuracy: it is whether `volume`, measured from a mask on
+a worn photo, agrees with the engine's scale to ±0.05 — because perturbing every
+volume by ±0.05 changes which rules fire on 10.8% of candidate outfits, and by
+±0.10 on 22.4% (`make sensitivity`). Design, licence and photo protocol:
+[`docs/w1-segmentation.md`](docs/w1-segmentation.md).
 
 ---
 
@@ -295,8 +305,11 @@ change together.
 
 ## Honest limits
 
-- `volume` and `structure` are hand-judged by one person on a 0–1 scale. No
-  inter-annotator agreement yet, so the balance rules are calibrated to one eye.
+- `volume` (a width ratio, 0.8–2.1 in this wardrobe) and `structure` (0–1) are
+  hand-judged by one person. No inter-annotator agreement yet, so the balance
+  rules are calibrated to one eye. W1 is built to replace the first with a
+  measurement; [a short protocol](docs/volume-rejudging-protocol.md) measures how
+  consistent the eye is.
 - Landmarks are hand-measured from one frame. Untested on a second body.
 - Rule weights were set by judgement. They are not fit to anything — that needs
   the labelled eval set in phase 4.
