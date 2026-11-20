@@ -1,17 +1,17 @@
 id,name,category,subcategory,rise,length,fit,volume,volume_lower,structure,tuckable,neckline,sleeve,pattern,fabric_weight,drape,formality,clo,heel_cm,waist_seam,color_hex,availability
-top_knit_vneck_blk,Black V-neck knit top,top,knit_top,,waist,fitted,,,,yes,vneck,long,solid,mid,fluid,,,,,#0A0F1C,clean
-top_vest_rib_cream,Cream ribbed knit vest,top,vest,,crop,fitted,,,,no,vneck,sleeveless,solid,light,structured_knit,,,,,#F2E6D4,clean
-top_tank_white,White textured tank,top,tank,,waist,relaxed,,,,yes,scoop,sleeveless,solid,light,fluid,,,,,#CCC9DC,clean
-top_shirt_sage,Sage camp-collar shirt,top,shirt,,hip,relaxed,,,,yes,collar,short,solid,light,fluid,,,,,#ABBEA9,clean
-top_tee_cream,Cream fitted crew tee,top,tee,,waist,fitted,,,,yes,crew,short,solid,light,fluid,,,,,#B9BDC2,clean
-top_turtleneck_white,White ribbed turtleneck,top,turtleneck,,waist,fitted,,,,yes,turtle,long,solid,mid,structured_knit,,,,,#E6E2DC,clean
-top_turtleneck_lilac,Lilac ribbed turtleneck,top,turtleneck,,hip,relaxed,,,,no,turtle,long,solid,heavy,soft,,,,,#B09ACF,clean
-top_sweater_crew_blk,Black crew sweater,top,sweater,,waist,fitted,,,,no,crew,long,solid,mid,structured_knit,,,,,#1B2022,clean
-top_tank_mustard,Mustard flutter tank,top,tank,,waist,fitted,,,,yes,scoop,sleeveless,solid,light,fluid,,,,,#E0A92B,clean
-top_polo_stripe_white,White striped sleeveless polo,top,polo,,waist,relaxed,,,,yes,collar,sleeveless,striped,light,crisp,,,,,#C9CEDA,clean
-top_tee_orange,Orange tee,top,tee,,waist,fitted,,,,yes,crew,short,solid,light,fluid,,,,,#E2651C,clean
-top_shirt_red,Deep red collared shirt,top,shirt,,hip,fitted,,,,yes,collar,long,solid,mid,crisp,,,,,#8E2233,clean
-top_kurta_white,White cotton kurta,top,kurta,,tunic,straight,,,,no,vneck,three_quarter,solid,light,fluid,,,,,#E8E2DC,clean
+top_knit_vneck_blk,Black V-neck knit top,top,knit_top,,waist,fitted,1.5,,0.95,yes,vneck,long,solid,mid,fluid,0.18,,,,#0A0F1C,clean
+top_vest_rib_cream,Cream ribbed knit vest,top,vest,,crop,fitted,0.9,,0.1,no,vneck,sleeveless,solid,light,structured_knit,0.3,,,,#F2E6D4,clean
+top_tank_white,White textured tank,top,tank,,waist,relaxed,1.25,,0.8,yes,scoop,sleeveless,solid,light,fluid,0.12,,,,#CCC9DC,clean
+top_shirt_sage,Sage camp-collar shirt,top,shirt,,hip,relaxed,1.25,,0.85,yes,collar,short,solid,light,fluid,0.12,,,,#ABBEA9,clean
+top_tee_cream,Cream fitted crew tee,top,tee,,waist,fitted,0.5,,0.5,yes,crew,short,solid,light,fluid,0.1,,,,#B9BDC2,clean
+top_turtleneck_white,White ribbed turtleneck,top,turtleneck,,waist,fitted,0.65,,0.1,yes,turtle,long,solid,mid,structured_knit,0.8,,,,#E6E2DC,clean
+top_turtleneck_lilac,Lilac ribbed turtleneck,top,turtleneck,,hip,relaxed,1.5,,0.1,no,turtle,long,solid,heavy,soft,0.3,,,,#B09ACF,clean
+top_sweater_crew_blk,Black crew sweater,top,sweater,,waist,fitted,0.95,,0.78,no,crew,long,solid,mid,structured_knit,0.5,,,,#1B2022,clean
+top_tank_mustard,Mustard flutter tank,top,tank,,waist,fitted,0.7,,0.1,yes,scoop,sleeveless,solid,light,fluid,0.2,,,,#E0A92B,clean
+top_polo_stripe_white,White striped sleeveless polo,top,polo,,waist,relaxed,0.95,,0.75,yes,collar,sleeveless,striped,light,crisp,0.2,,,,#C9CEDA,clean
+top_tee_orange,Orange tee,top,tee,,waist,fitted,0.95,,0.78,yes,crew,short,solid,light,fluid,0.3,,,,#E2651C,clean
+top_shirt_red,Deep red collared shirt,top,shirt,,hip,fitted,0.95,,0.95,yes,collar,long,solid,mid,crisp,1,,,,#8E2233,clean
+top_kurta_white,White cotton kurta,top,kurta,,tunic,straight,1,,0.15,no,vneck,three_quarter,solid,light,fluid,0.7,,,,#E8E2DC,clean
 top_kurta_teal,Teal silk kurta,top,kurta,,tunic,straight,,,,no,vneck,three_quarter,solid,mid,fluid,,,,,#5E7A70,clean
 bot_jean_barrel_indigo,Indigo barrel jean,bottom,barrel_jean,high,full,relaxed,,,,,,,solid,heavy,crisp,,,,,#0D2342,clean
 bot_pant_wide_indigo,Indigo wide-leg pant,bottom,wide_leg_trouser,high,full,relaxed,,,,,,,solid,heavy,fluid,,,,,#112746,clean
