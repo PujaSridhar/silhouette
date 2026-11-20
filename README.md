@@ -280,8 +280,12 @@ silhouette --wardrobe evals/imported/wardrobe.csv \
 
 The Rate tab hides the engine's score and its explanations while you rate — seeing
 them anchors the judgement and the whole point is independence. Every eighth label
-re-serves something already rated, because two independent ratings of one outfit give
-**self-agreement**, which is the ceiling any model is measured against.
+re-serves something the same rater already rated, because two independent ratings of
+one outfit give **self-agreement**, which is the ceiling any model is measured against.
+
+Each rater enters their own name on the Rate tab, and every label is saved under it,
+so several stylists can rate one wardrobe and stay separate. Self-agreement only ever
+pairs a rater with themselves; two stylists on one outfit is a different number.
 
 It also separates two things that look alike: rules **not yet labelled** (reachable,
 the sampler is aiming at them) from rules that **cannot fire at all** for this frame

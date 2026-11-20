@@ -692,9 +692,18 @@ const Store={
   },
 };
 
+/* The person rating, not the person being dressed. One browser is one
+   rater, so the name lives on this device rather than on a profile: several
+   stylists can rate the same wardrobe, each from their own browser, and
+   every label says who made it. Without this every label carried the
+   wearer's name, and three stylists were indistinguishable from one. */
+const RATERKEY=LSKEY+".rater";
+function loadRater(){try{return localStorage.getItem(RATERKEY)||""}catch(e){return ""}}
+function saveRater(v){try{localStorage.setItem(RATERKEY,v)}catch(e){}}
+
 /* ====================== STATE / VIEWS =============================== */
 const S={clients:[],garments:{},labels:{},activeId:null,tab:"wardrobe",
-  rateTask:null,rateQueue:[],rateMode:"quick",rateRepeatServed:false,
+  rateTask:null,rateQueue:[],rateMode:"quick",rateRepeatServed:false,rater:loadRater(),
   rating:{proportion:null,balance:null,formality:null,colour:null,cohesion:null,
     overall:null,would:null,note:""},exportText:null,
   filter:"all",adding:null,ctx:"work",
@@ -706,6 +715,7 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,
 const uid=p=>p+"_"+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
 const active=()=>S.clients.find(c=>c.id===S.activeId)||null;
 const wardrobe=()=>(S.garments[S.activeId]||[]);
+const raterName=()=>(S.rater||"").trim();
 
 function outfitLabel(o){
   return itemsOf(o).map(g=>(o.tucked&&g===o.top)?g.name+" (tucked)":g.name).join(" + ");
@@ -888,11 +898,14 @@ function fillRateQueue(n){
   return picked;
 }
 function nextRateTask(){
-  const ls=LABELS();
   // Every eighth label, re-serve something already rated. Two independent
   // ratings of one outfit give self-agreement, which is the ceiling on how
   // well any model can score. Without repeats there is no ceiling to compare
   // against, and a rho of 0.6 means nothing on its own.
+  // Repeats come from THIS rater's own labels: a second stylist rating the
+  // first one's outfit measures agreement between them, not with themselves.
+  const who=raterName();
+  const ls=who?LABELS().filter(l=>l.labeller===who):[];
   if(ls.length>=8&&ls.length%8===0&&!S.rateRepeatServed){
     const seen=new Set(),firsts=[];
     for(const l of ls.slice().sort((a,b)=>(a.created_at<b.created_at?-1:1))){
@@ -945,8 +958,9 @@ function labelStats(){
     totals.push(scoreOutfit(o,c.frame,ctx,c.goals).v.total);
     overalls.push(l.overall);
   }
-  const groups={};
-  for(const l of ls)(groups[labelKeyOf(l)]=groups[labelKeyOf(l)]||[]).push(l);
+  // Self-agreement pairs one rater with themselves, never with someone else.
+  const groups={},gk=l=>(l.labeller||"")+"\u0001"+labelKeyOf(l);
+  for(const l of ls)(groups[gk(l)]=groups[gk(l)]||[]).push(l);
   const pairs=Object.values(groups).filter(g=>g.length>1)
     .map(g=>{const s=g.slice().sort((a,b)=>(a.created_at<b.created_at?-1:1));
       return [s[0].overall,s[s.length-1].overall];});
@@ -1158,6 +1172,19 @@ function scaleRow(key,label,hint,val){
   return `<div class="dim"><span class="dl">${esc(label)}<span class="dh">${esc(hint)}</span></span>
     <span class="scale">${[1,2,3,4,5].map(v=>`<button type="button" data-rate="${key}" data-val="${v}" aria-pressed="${val===v}">${v}</button>`).join("")}</span></div>`;
 }
+function rateReady(){
+  const r=S.rating;
+  return !!raterName()&&r.overall!==null&&r.would!==null
+    &&(S.rateMode==="quick"||DIMS.every(([k])=>r[k]!==null));
+}
+function raterHTML(){
+  const who=raterName();
+  return `<div class="card" style="margin-bottom:16px"><label for="raterName">Your name</label>
+    <input type="text" id="raterName" value="${esc(S.rater)}" placeholder="Who is rating? Each stylist uses their own name" autocomplete="name" style="width:100%">
+    <p class="note" style="margin-top:6px">${who
+      ?`Ratings are saved under <b>${esc(who)}</b>. Repeats come from your own ratings only.`
+      :`Add your name to save ratings. It keeps each stylist&rsquo;s scores separate.`}</p></div>`;
+}
 function viewRate(){
   const c=active();
   if(!c)return onboardingHTML();
@@ -1181,8 +1208,7 @@ function viewRate(){
     const dims=S.rateMode==="full"
       ? DIMS.map(([k,h])=>scaleRow(k,k[0].toUpperCase()+k.slice(1),h,r[k])).join("")
       : "";
-    const ready=r.overall!==null&&r.would!==null
-      &&(S.rateMode==="quick"||DIMS.every(([k])=>r[k]!==null));
+    const ready=rateReady();
     card=`<div class="rateCard">
       <div class="rateOcc">For ${esc(ctx.label)}${t.repeat?`<span class="repeatFlag">repeat &mdash; rate it fresh</span>`:""}</div>
       <div class="rateItems">${itemsOf(t.o).map(g=>`<div class="rateItem"><span class="sw" style="background:${esc(g.color_hex)}"></span><span>${esc(g.name)}${(t.o.tucked&&g.category==="top")?" <span class=\"faint\">(tucked)</span>":""}</span></div>`).join("")}</div>
@@ -1222,6 +1248,7 @@ function viewRate(){
       <button class="chip" type="button" data-ratemode="quick" aria-pressed="${S.rateMode==="quick"}">Quick &mdash; 3 taps</button>
       <button class="chip" type="button" data-ratemode="full" aria-pressed="${S.rateMode==="full"}">Full &mdash; all five dimensions</button>
     </div>
+    ${raterHTML()}
     ${card}
     <div class="shead" style="margin-top:26px"><h2>Your numbers</h2>
       <p>Computed from your labels, with the sample size attached.</p></div>
@@ -1360,7 +1387,7 @@ document.addEventListener("click",async(e)=>{
   }
   if(t.id==="rateSave"){
     const c=active(),task=S.rateTask,r=S.rating;
-    if(!c||!task)return;
+    if(!c||!task||!rateReady())return;
     const o=task.o;
     const label={id:uid("l"),
       outfit:{top:o.top?o.top.id:null,bottom:o.bottom?o.bottom.id:null,
@@ -1371,7 +1398,7 @@ document.addEventListener("click",async(e)=>{
       ratings:S.rateMode==="full"?{proportion:r.proportion,balance:r.balance,
         formality:r.formality,colour:r.colour,cohesion:r.cohesion}:null,
       would_wear:!!r.would,
-      labeller:c.name,source:"expert",note:r.note||"",
+      labeller:raterName(),source:"expert",note:r.note||"",
       engine_version:1,created_at:new Date().toISOString()};
     S.labels[c.id]=(S.labels[c.id]||[]).concat([label]);
     S.rateRepeatServed=false;
@@ -1414,6 +1441,7 @@ document.addEventListener("click",async(e)=>{
 document.addEventListener("change",async(e)=>{
   const t=e.target;
   if(t.id==="whoSel"){S.activeId=t.value;S.gaps=null;S.rateTask=null;S.rateQueue=[];S.exportText=null;S.manual={top:null,bottom:null,dress:null,outer:null,shoe:null,drape:null,tucked:false};render();await Store.setActive(t.value);return;}
+  if(t.id==="raterName"){S.rater=t.value.trim();saveRater(S.rater);render();return;}
   if(t.dataset.slot){S.manual[t.dataset.slot]=t.value||null;render();return;}
   if(t.id==="tuckBox"){S.manual.tucked=t.checked;render();return;}
   if(t.dataset.goal){
@@ -1427,6 +1455,13 @@ let frameTimer=null;
 document.addEventListener("input",(e)=>{
   const t=e.target,c=active();if(!c)return;
   if(t.id==="rnote"){S.rating.note=t.value;return;}
+  if(t.id==="raterName"){
+    // No re-render while typing, so the field keeps focus; the change event
+    // below re-renders once they leave it.
+    S.rater=t.value;saveRater(t.value.trim());
+    const b=el("rateSave");if(b)b.disabled=!rateReady();
+    return;
+  }
   const map={fh:"heightCm",fw:"waist",fp:"hip",fr:"ratio"};
   if(!(t.id in map))return;
   const v=parseFloat(t.value);

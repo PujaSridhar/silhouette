@@ -435,6 +435,8 @@ def cmd_import(args) -> int:
     print(f"  style cv   {cvobj.owner}, {len(cvobj.contexts)} contexts -> {cvpath.name}")
     print(f"  labels     {n} ({sum(1 for l in labels if l.has_dimensions)} with dimensions)"
           f" -> {lpath.name}")
+    for who, k in sorted(store.by_labeller().items()):
+        print(f"    {k:4d}  by {who}")
     if bad:
         print(f"\n  {len(bad)} dangling reference(s) - these labels cannot be scored:")
         for lid, ref in bad[:8]:
