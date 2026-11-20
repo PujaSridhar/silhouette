@@ -1,0 +1,43 @@
+id,name,category,subcategory,rise,length,fit,volume,volume_lower,structure,tuckable,neckline,sleeve,pattern,fabric_weight,drape,formality,clo,heel_cm,waist_seam,color_hex,availability
+top_knit_vneck_blk,Black V-neck knit top,top,knit_top,,waist,fitted,,,,yes,vneck,long,solid,mid,fluid,,,,,#0A0F1C,clean
+top_vest_rib_cream,Cream ribbed knit vest,top,vest,,crop,fitted,,,,no,vneck,sleeveless,solid,light,structured_knit,,,,,#F2E6D4,clean
+top_tank_white,White textured tank,top,tank,,waist,relaxed,,,,yes,scoop,sleeveless,solid,light,fluid,,,,,#CCC9DC,clean
+top_shirt_sage,Sage camp-collar shirt,top,shirt,,hip,relaxed,,,,yes,collar,short,solid,light,fluid,,,,,#ABBEA9,clean
+top_tee_cream,Cream fitted crew tee,top,tee,,waist,fitted,,,,yes,crew,short,solid,light,fluid,,,,,#B9BDC2,clean
+top_turtleneck_white,White ribbed turtleneck,top,turtleneck,,waist,fitted,,,,yes,turtle,long,solid,mid,structured_knit,,,,,#E6E2DC,clean
+top_turtleneck_lilac,Lilac ribbed turtleneck,top,turtleneck,,hip,relaxed,,,,no,turtle,long,solid,heavy,soft,,,,,#B09ACF,clean
+top_sweater_crew_blk,Black crew sweater,top,sweater,,waist,fitted,,,,no,crew,long,solid,mid,structured_knit,,,,,#1B2022,clean
+top_tank_mustard,Mustard flutter tank,top,tank,,waist,fitted,,,,yes,scoop,sleeveless,solid,light,fluid,,,,,#E0A92B,clean
+top_polo_stripe_white,White striped sleeveless polo,top,polo,,waist,relaxed,,,,yes,collar,sleeveless,striped,light,crisp,,,,,#C9CEDA,clean
+top_tee_orange,Orange tee,top,tee,,waist,fitted,,,,yes,crew,short,solid,light,fluid,,,,,#E2651C,clean
+top_shirt_red,Deep red collared shirt,top,shirt,,hip,fitted,,,,yes,collar,long,solid,mid,crisp,,,,,#8E2233,clean
+top_kurta_white,White cotton kurta,top,kurta,,tunic,straight,,,,no,vneck,three_quarter,solid,light,fluid,,,,,#E8E2DC,clean
+top_kurta_teal,Teal silk kurta,top,kurta,,tunic,straight,,,,no,vneck,three_quarter,solid,mid,fluid,,,,,#5E7A70,clean
+bot_jean_wide_indigo,Indigo wide-leg jean,bottom,jean,high,full,relaxed,,,,,,,solid,heavy,crisp,,,,,#0D2342,clean
+bot_jean_wide_midwash,Mid-wash wide-leg jean,bottom,jean,high,full,relaxed,,,,,,,solid,heavy,crisp,,,,,#1A3B5E,clean
+bot_skirt_maxi_blk,Black maxi column skirt,bottom,maxi_skirt,high,maxi,straight,,,,,,,solid,mid,fluid,,,,,#0A0E16,clean
+bot_lehenga_maroon,Maroon satin lehenga skirt,bottom,lehenga,high,maxi,relaxed,,,,,,,solid,mid,fluid,,,,,#7A1020,clean
+bot_jean_crop_lightwash,Light-wash cropped jean,bottom,jean,mid,ankle,straight,,,,,,,solid,heavy,crisp,,,,,#50667E,clean
+bot_trouser_straight_tan,Tan straight trouser,bottom,trouser,high,full,straight,,,,,,,solid,mid,crisp,,,,,#B9A288,clean
+bot_jean_straight_white,White straight jean,bottom,jean,high,full,straight,,,,,,,solid,heavy,crisp,,,,,#D8E4F3,clean
+bot_trackpant_charcoal,Charcoal track pant,bottom,track_pant,mid,ankle,relaxed,,,,,,,solid,mid,soft,,,,,#38353C,clean
+bot_trouser_navy_cuffed,Navy cuffed trouser,bottom,trouser,high,ankle,relaxed,,,,,,,solid,mid,fluid,,,,,#0D1017,clean
+bot_salwar_indigo_print,Indigo printed salwar,bottom,salwar,high,ankle,relaxed,,,,,,,print,light,fluid,,,,,#3B4A63,clean
+bot_trouser_suit_blk,Black suit trouser,bottom,trouser,mid,full,straight,,,,,,,solid,mid,crisp,,,,,#22262E,clean
+bot_skirt_floral_white,White floral A-line skirt,bottom,a_line_skirt,high,above_knee,relaxed,,,,,,,floral,light,crisp,,,,,#DDD3CB,clean
+bot_short_khaki,Khaki walking short,bottom,shorts,mid,above_knee,relaxed,,,,,,,solid,mid,crisp,,,,,#8A7259,clean
+dress_saree_white,White sheer saree,dress,saree,,maxi,draped,,,,,,,solid,light,fluid,,,,none,#CCD0E9,clean
+dress_saree_red,Red silk saree,dress,saree,,maxi,draped,,,,,,,solid,mid,fluid,,,,none,#A02030,clean
+dress_saree_gold_stripe,Gold striped silk saree,dress,saree,,maxi,draped,,,,,,,striped,mid,fluid,,,,none,#B48166,clean
+dress_shift_dot_blk,Black polka-dot shift dress,dress,shift_dress,,knee,fitted,,,,,,,polka_dot,light,fluid,,,,none,#2A2E38,clean
+out_coat_dbl_blk,Black double-breasted wool coat,outer,coat,,maxi,straight,,,,no,lapel,long,solid,heavy,crisp,,,,,#0C1932,clean
+out_blazer_stripe_grey,Grey striped blazer,outer,blazer,,hip,fitted,,,,no,lapel,long,striped,mid,crisp,,,,,#A2A6B4,clean
+out_jacket_crop_navy,Navy cropped jacket,outer,cropped_jacket,,waist,fitted,,,,no,collar,long,solid,mid,crisp,,,,,#2A2440,clean
+out_jacket_cord_olive,Olive corduroy trucker jacket,outer,corduroy_jacket,,hip,straight,,,,no,collar,long,solid,heavy,crisp,,,,,#4A3E24,clean
+out_jacket_cord_tan,Tan corduroy shirt jacket,outer,corduroy_jacket,,hip,relaxed,,,,no,collar,long,solid,heavy,soft,,,,,#9B6B52,clean
+out_puffer_cream,Cream hooded puffer,outer,puffer,,hip,relaxed,,,,no,hood,long,solid,heavy,soft,,,,,#D5D8DE,clean
+shoe_sneaker_grey,Grey suede sneaker,shoe,sneaker,,,straight,,,,,,,solid,heavy,crisp,,,,,#928F90,clean
+shoe_hightop_platform,Cream platform high-top,shoe,platform_sneaker,,,straight,,,,,,,solid,heavy,crisp,,,,,#B5B6BB,clean
+shoe_flat_blk,Black flat loafer,shoe,loafer,,,fitted,,,,,,,solid,mid,crisp,,,,,#1E1E20,clean
+shoe_clog_green,Green foam clog,shoe,clog,,,relaxed,,,,,,,solid,light,soft,,,,,#8B9F85,clean
+shoe_heel_cream,Cream pointed heel,shoe,pump,,,fitted,,,,,,,solid,mid,crisp,,,,,#E3DCD2,clean

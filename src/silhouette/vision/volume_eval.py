@@ -78,6 +78,18 @@ def read_manifest(photos: Path) -> list[dict]:
         return list(csv.DictReader(fh))
 
 
+def _extent(rec: dict) -> tuple[float | None, float | None]:
+    """crown_y and sole_y, or None where the manifest leaves one blank."""
+    out = []
+    for key in ("crown_y", "sole_y"):
+        raw = (rec.get(key) or "").strip()
+        try:
+            out.append(float(raw) if raw else None)
+        except ValueError:
+            out.append(None)
+    return out[0], out[1]
+
+
 def measure_photos(photos: str | Path, wardrobe: list[Garment], cv: StyleCV,
                    masks: str = "masks", definitions: list[str] | None = None) -> list[Row]:
     photos = Path(photos)
@@ -92,7 +104,14 @@ def measure_photos(photos: str | Path, wardrobe: list[Garment], cv: StyleCV,
             raise ValueError(f"{rec['photo']}: unknown garment ids {unknown}")
         shoe = next((by_id[i] for i in ids if by_id[i].category == "shoe"), None)
         heel = float(rec["heel_cm"]) if rec.get("heel_cm") else (shoe.heel_cm if shoe else 0.0)
-        scale = BodyScale(float(rec["crown_y"]), float(rec["sole_y"]), cv.height_cm, heel)
+        # Every measurement is a fraction of her standing height, so a photo
+        # with no crown or no sole has no scale and nothing here is measurable.
+        # Feet cropped out of frame is the ordinary case, not a broken manifest,
+        # so skip the photo rather than failing the whole run.
+        crown, sole = _extent(rec)
+        if crown is None or sole is None:
+            continue
+        scale = BodyScale(crown, sole, cv.height_cm, heel)
         mdir = photos / masks / stem
         sleeves = _read_mask(mdir / "sleeves.png") if (mdir / "sleeves.png").exists() else None
         for gid in ids:

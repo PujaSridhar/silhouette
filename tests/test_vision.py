@@ -465,3 +465,66 @@ def test_prep_photos_unzips_converts_disambiguates_and_preserves_manifest(tmp_pa
     res2 = ph.prep_photos(tmp_path)
     assert res2["added_to_manifest"] == 0
     assert len(list(csv.DictReader(open(tmp_path / "manifest.csv")))) == 3
+
+
+# --- which wardrobe a command reads -----------------------------------------
+#
+# `measure` scores measured volume against her own photographed pieces, so it
+# defaults to wardrobe_real.csv; everything else stays on the 30-garment
+# reference set. Both --wardrobe flags use argparse.SUPPRESS, because a plain
+# default on the subcommand flag silently overwrites an explicit
+# `silhouette-vision --wardrobe X measure` when argparse merges the subparser
+# into the parent namespace. That failure is invisible: the command succeeds
+# and reports numbers for the wrong closet.
+
+def _resolve(argv):
+    from silhouette.vision import cli
+    args = cli.build_parser().parse_args(argv)
+    default = cli.WARDROBE_REAL if args.cmd == "measure" else cli.WARDROBE
+    return cli._wardrobe(args, default)
+
+
+def test_measure_defaults_to_the_real_closet():
+    from silhouette.vision import cli
+    assert _resolve(["measure"]) == cli.WARDROBE_REAL
+
+
+def test_other_commands_default_to_the_reference_wardrobe():
+    from silhouette.vision import cli
+    assert _resolve(["sensitivity"]) == cli.WARDROBE
+    assert _resolve(["compare-masks"]) == cli.WARDROBE
+
+
+@pytest.mark.parametrize("argv", [
+    ["measure", "--wardrobe", "/tmp/given.csv"],
+    ["--wardrobe", "/tmp/given.csv", "measure"],
+])
+def test_an_explicit_wardrobe_is_never_overwritten(argv):
+    assert _resolve(argv) == "/tmp/given.csv"
+
+
+def test_the_reference_wardrobe_is_untouched_by_the_real_one():
+    """wardrobe.csv is what the engine, its tests and the parity files use."""
+    from silhouette.models import load_wardrobe
+    from silhouette.vision import cli
+    assert len(load_wardrobe(cli.WARDROBE)) == 30
+    ref = {g.id for g in load_wardrobe(cli.WARDROBE)}
+    real = {g.id for g in load_wardrobe(cli.WARDROBE_REAL)}
+    assert not (ref & real), "a real piece reuses a reference id"
+
+
+def test_a_photo_without_crown_or_sole_is_skipped_not_fatal(tmp_path):
+    """Feet cropped out of frame is ordinary; it must not kill the whole run."""
+    from silhouette.models import load_style_cv, load_wardrobe
+    from silhouette.vision.volume_eval import measure_photos
+    from silhouette.vision import cli
+    (tmp_path / "masks").mkdir()
+    with open(tmp_path / "manifest.csv", "w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["photo", "garments", "crown_y", "sole_y", "heel_cm"])
+        w.writerow(["a.jpg", "top_tee_blk", "100", "", ""])     # feet out of frame
+        w.writerow(["b.jpg", "top_tee_blk", "", "900", ""])     # head out of frame
+        w.writerow(["c.jpg", "top_tee_blk", "oops", "900", ""])  # unparseable
+    rows = measure_photos(tmp_path, load_wardrobe(cli.WARDROBE),
+                          load_style_cv("data/style_cv.yaml"))
+    assert rows == []
