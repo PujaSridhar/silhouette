@@ -3,6 +3,7 @@ CLI never imports anything heavier than numpy.
 
     silhouette-vision sensitivity [--seeds 200] [--volumes measured.csv]
     silhouette-vision fashionpedia ANNOTATIONS [--licence commercial]
+    silhouette-vision prep-photos [--photos photos]
     silhouette-vision measure --photos photos [--masks masks] [--out evals/volume/rows.csv]
     silhouette-vision compare-masks --photos photos
     silhouette-vision annotate IMAGE (--garment ID | --sleeves | --person) --box x0,y0,x1,y1 ...
@@ -105,13 +106,27 @@ def cmd_compare_masks(args) -> int:
     return 0
 
 
+def cmd_prep_photos(args) -> int:
+    from .photos import prep_photos
+    r = prep_photos(args.photos)
+    print(f"prepared {Path(args.photos) / 'images'}")
+    if r["zips_removed"]:
+        print(f"  unzipped       {r['unzipped']} image(s) from {r['zips_removed']} zip(s)"
+              f" (ignored {r['skipped_zip_entries']} non-image entries)")
+    if r["converted_heic"]:
+        print(f"  converted      {r['converted_heic']} HEIC file(s) -> JPEG")
+    print(f"  manifest       +{r['added_to_manifest']} new row(s), "
+          f"{r['total_photos']} photo(s) total in {Path(args.photos) / 'manifest.csv'}")
+    return 0
+
+
 def cmd_annotate(args) -> int:
-    import numpy as np
     from PIL import Image
 
+    from .photos import open_rgb
     from .sam import Segmenter, overlay, parse_box, parse_point, save_mask, union_into
     img_path = Path(args.image)
-    img = np.asarray(Image.open(img_path).convert("RGB"))
+    img = open_rgb(img_path)
     seg = Segmenter(args.checkpoint)
     seg.set_image(img, str(img_path))
     mask = seg.segment([parse_box(b) for b in args.box], [parse_point(p) for p in args.point])
@@ -191,6 +206,10 @@ def main(argv=None) -> int:
     f.add_argument("annotations")
     f.add_argument("--licence", default="all", choices=["all", "commercial"])
     f.set_defaults(fn=cmd_fashionpedia)
+
+    pp = sub.add_parser("prep-photos", help="unzip, convert HEIC -> JPEG, fill manifest.csv")
+    pp.add_argument("--photos", default=str(ROOT / "photos"))
+    pp.set_defaults(fn=cmd_prep_photos)
 
     m = sub.add_parser("measure", help="measured vs hand-judged volume on photos")
     m.add_argument("--photos", default=str(ROOT / "photos"))

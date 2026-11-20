@@ -95,8 +95,8 @@ def _resize_mask(m: np.ndarray, nh: int, nw: int, size: int) -> np.ndarray:
 
 
 def _load_rgb(path: Path) -> np.ndarray:
-    from PIL import Image, ImageOps
-    return np.asarray(ImageOps.exif_transpose(Image.open(path)).convert("RGB"))
+    from .photos import open_rgb
+    return open_rgb(path)
 
 
 def make_dataset(samples: list[Sample], image_dir: str, size: int, train: bool):

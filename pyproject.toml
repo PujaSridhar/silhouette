@@ -24,10 +24,10 @@ dev = ["pytest>=8.0"]
 # W1. `vision` measures volume from masks and trains/evaluates the segmenter;
 # `sam` adds SAM 2 for hand-annotating her own photos. Neither is needed for
 # the engine itself.
-vision = ["pillow>=10.0", "torch>=2.2", "transformers>=4.44", "scipy>=1.11"]
+vision = ["pillow>=10.0", "pillow-heif>=0.16", "torch>=2.2", "transformers>=4.44", "scipy>=1.11"]
 # Meta's SAM 2 from its own repository. The `sam2` name on PyPI is a
 # third-party upload, not Meta's, so it is deliberately not used.
-sam = ["pillow>=10.0", "sam2 @ git+https://github.com/facebookresearch/sam2.git"]
+sam = ["pillow>=10.0", "pillow-heif>=0.16", "sam2 @ git+https://github.com/facebookresearch/sam2.git"]
 
 [project.scripts]
 silhouette = "silhouette.cli:main"
