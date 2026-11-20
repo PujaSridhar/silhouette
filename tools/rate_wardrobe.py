@@ -34,6 +34,37 @@ REFERENCE = ROOT / "data" / "wardrobe.csv"
 PHOTOS = ROOT / "photos"
 PAGE = Path(__file__).with_name("rate_wardrobe.html")
 
+#: The scales, as words. Judging "is this Relaxed or Loose" is a question a
+#: stylist can answer off a photo; judging "is this 1.2 or 1.4" is the same
+#: question wearing a disguise, and invites false precision. The number is
+#: what gets stored; the word is what gets asked.
+VOLUME_SCALES = {
+    "default": [("Fitted", 0.85), ("Close", 1.0), ("Relaxed", 1.2),
+                ("Loose", 1.4), ("Oversized", 1.65)],
+    "bottom": [("Skinny", 0.85), ("Straight", 1.1), ("Relaxed", 1.4),
+               ("Wide", 1.85), ("Very wide", 2.1)],
+}
+#: Only the draped pieces are asked for a second, lower width.
+VOLUME_LOWER_SCALE = [("Narrow", 1.1), ("A-line", 1.4), ("Full", 1.9)]
+STRUCTURE_SCALE = [("Soft", 0.15), ("Medium", 0.4), ("Stiff", 0.75)]
+FORMALITY_SCALE = [("Casual", 0.25), ("Smart", 0.55), ("Dressy", 0.85)]
+
+
+def volume_scale(category: str) -> list[tuple[str, float]]:
+    """Bottoms get their own words; everything else uses the default set.
+
+    Shoes and the dupatta fall through to the default scale, which was
+    written for tops, outerwear and dresses. Its top end ("Oversized", 1.65)
+    does not mean much for a shoe, so those six pieces are the ones to look
+    at again if their numbers come out odd.
+    """
+    return VOLUME_SCALES["bottom" if category == "bottom" else "default"]
+
+
+def _steps(scale) -> list[dict]:
+    return [{"label": w, "value": v} for w, v in scale]
+
+
 #: Fractions of crown->sole to crop for each category, so the zone the volume
 #: question is about is what she actually sees.
 ZONES = {
@@ -100,7 +131,12 @@ def items() -> list[dict]:
     photos = best_photos()
     out = []
     for r in _rows(REAL):
+        shots = photos.get(r["id"], [])
         out.append({
+            "volume_steps": _steps(volume_scale(r["category"])),
+            "volume_lower_steps": _steps(VOLUME_LOWER_SCALE),
+            "structure_steps": _steps(STRUCTURE_SCALE),
+            "formality_steps": _steps(FORMALITY_SCALE),
             "id": r["id"], "name": r["name"], "category": r["category"],
             "subcategory": r.get("subcategory", ""),
             "fit": r.get("fit", ""), "length": r.get("length", ""),
@@ -109,13 +145,17 @@ def items() -> list[dict]:
             # volume_lower is only meaningful where one piece covers both
             # zones at different widths, which here means the draped pieces.
             "two_part": r["category"] == "dress",
-            "photos": photos.get(r["id"], []),
+            "photos": shots,
             "volume": (r.get("volume") or "").strip(),
             "volume_lower": (r.get("volume_lower") or "").strip(),
             "structure": (r.get("structure") or "").strip(),
             "formality": (r.get("formality") or "").strip(),
             "anchors": anchors(r["category"]),
         })
+    # A piece photographed more than once is the one worth judging first: a
+    # second angle is the only check available on whether the first was
+    # misleading, and those answers then anchor the single-photo ones.
+    out.sort(key=lambda i: (len(i["photos"]) < 2))
     return out
 
 
