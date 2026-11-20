@@ -5,6 +5,7 @@ CLI never imports anything heavier than numpy.
     silhouette-vision fashionpedia ANNOTATIONS [--licence commercial]
     silhouette-vision prep-photos [--photos photos]
     silhouette-vision measure --photos photos [--masks masks] [--out evals/volume/rows.csv]
+                              [--wardrobe data/wardrobe_real.csv]
     silhouette-vision compare-masks --photos photos
     silhouette-vision annotate IMAGE (--garment ID | --sleeves | --person) --box x0,y0,x1,y1 ...
     silhouette-vision predict --model runs/w1/model --photos photos
@@ -20,11 +21,31 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 
+#: The 30-garment reference set the engine, its tests and the parity fixtures
+#: are built on. Nothing here may change it.
+WARDROBE = str(ROOT / "data" / "wardrobe.csv")
+#: Her own pieces, read off her photos. `measure` defaults to this one, because
+#: scoring measured volume is only meaningful against garments she actually owns
+#: and has photographed. Its volume column is hers to fill in.
+WARDROBE_REAL = str(ROOT / "data" / "wardrobe_real.csv")
+
+
+def _wardrobe(args, default: str = WARDROBE) -> str:
+    """The wardrobe this invocation should read.
+
+    Both `--wardrobe` flags are declared with `argparse.SUPPRESS`, so the
+    attribute exists only when one of them was actually given. A plain default
+    on the subcommand flag would silently overwrite an explicit
+    `silhouette-vision --wardrobe X measure`, which is how argparse merges a
+    subparser into the parent namespace.
+    """
+    return getattr(args, "wardrobe", default)
+
 
 def _engine(args):
     from ..models import load_style_cv, load_wardrobe
     from ..rules import load_rules
-    return (load_wardrobe(args.wardrobe), load_style_cv(args.style_cv), load_rules(args.rules_file))
+    return (load_wardrobe(_wardrobe(args)), load_style_cv(args.style_cv), load_rules(args.rules_file))
 
 
 def cmd_sensitivity(args) -> int:
@@ -71,7 +92,14 @@ def cmd_fashionpedia(args) -> int:
 def cmd_measure(args) -> int:
     from ..models import load_style_cv, load_wardrobe
     from .volume_eval import measure_photos, report, summarise
-    rows = measure_photos(args.photos, load_wardrobe(args.wardrobe), load_style_cv(args.style_cv),
+    try:
+        wardrobe = load_wardrobe(_wardrobe(args, WARDROBE_REAL))
+    except ValueError as e:
+        # An unrated wardrobe is the expected state before she has judged it,
+        # not a crash worth a traceback.
+        print(e)
+        return 1
+    rows = measure_photos(args.photos, wardrobe, load_style_cv(args.style_cv),
                           masks=args.masks)
     if not rows:
         print("no measurements: check photos/manifest.csv and the mask folder")
@@ -97,7 +125,7 @@ def cmd_measure(args) -> int:
 def cmd_compare_masks(args) -> int:
     from ..models import load_wardrobe
     from .volume_eval import mask_agreement
-    res = mask_agreement(args.photos, load_wardrobe(args.wardrobe), args.a, args.b)
+    res = mask_agreement(args.photos, load_wardrobe(_wardrobe(args)), args.a, args.b)
     if not res:
         print(f"no garment has a mask in both {args.a}/ and {args.b}/")
         return 1
@@ -150,7 +178,7 @@ def cmd_annotate(args) -> int:
 def cmd_rejudge_sheet(args) -> int:
     from ..models import load_wardrobe
     from .rejudge import make_sheet
-    out = make_sheet(load_wardrobe(args.wardrobe), args.out, seed=args.seed)
+    out = make_sheet(load_wardrobe(_wardrobe(args)), args.out, seed=args.seed)
     print(f"wrote {out}: fill session 1 now, cover it, session 2 in two to three weeks")
     return 0
 
@@ -158,7 +186,7 @@ def cmd_rejudge_sheet(args) -> int:
 def cmd_rejudge(args) -> int:
     from ..models import load_wardrobe
     from .rejudge import analyse
-    r = analyse(args.sheet, load_wardrobe(args.wardrobe))
+    r = analyse(args.sheet, load_wardrobe(_wardrobe(args)))
     if not r["garments"]:
         print("no garment has both sessions filled in yet")
         return 1
@@ -181,17 +209,18 @@ def cmd_predict(args) -> int:
     from ..models import load_wardrobe
     from .train import predict_photos
     model = Mask2FormerForUniversalSegmentation.from_pretrained(args.model)
-    for n in predict_photos(model, args.photos, load_wardrobe(args.wardrobe), args.size,
+    for n in predict_photos(model, args.photos, load_wardrobe(_wardrobe(args)), args.size,
                             args.threshold):
         print(n)
     print(f"wrote masks to {Path(args.photos) / 'masks_model'}")
     return 0
 
 
-def main(argv=None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="silhouette-vision", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--wardrobe", default=str(ROOT / "data" / "wardrobe.csv"))
+    p.add_argument("--wardrobe", default=argparse.SUPPRESS,
+                   help=f"wardrobe CSV (default: {WARDROBE})")
     p.add_argument("--style-cv", default=str(ROOT / "data" / "style_cv.yaml"))
     p.add_argument("--rules-file", default=str(ROOT / "rules" / "core.yaml"))
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -214,6 +243,8 @@ def main(argv=None) -> int:
     m = sub.add_parser("measure", help="measured vs hand-judged volume on photos")
     m.add_argument("--photos", default=str(ROOT / "photos"))
     m.add_argument("--masks", default="masks", help="masks (hand) or masks_model")
+    m.add_argument("--wardrobe", default=argparse.SUPPRESS,
+                   help=f"wardrobe CSV to score against (default: {WARDROBE_REAL})")
     m.add_argument("--out", default=str(ROOT / "evals" / "volume" / "rows.csv"))
     m.set_defaults(fn=cmd_measure)
 
@@ -251,6 +282,11 @@ def main(argv=None) -> int:
     r.add_argument("--threshold", type=float, default=0.3)
     r.set_defaults(fn=cmd_predict)
 
+    return p
+
+
+def main(argv=None) -> int:
+    p = build_parser()
     args = p.parse_args(argv)
     if args.cmd == "annotate" and not (args.box or args.point):
         p.error("annotate needs at least one --box or --point")
