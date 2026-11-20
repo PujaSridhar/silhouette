@@ -13,6 +13,15 @@ demo/app-data.json
 evals/labels/*.jsonl
 evals/imported/
 
+# W1. Photos of a person stay on her machine, and so does everything derived
+# from them (masks, measured volumes). Fashionpedia data and training runs are
+# large and downloadable. The blind re-judging sheet is a label file.
+photos/
+evals/volume/
+evals/rejudge/*.csv
+data/fashionpedia/
+runs/
+
 # Python
 __pycache__/
 *.py[cod]
