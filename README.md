@@ -289,7 +289,6 @@ change together.
 - [ADR 0002 — rules as data, and the `eval` boundary](docs/adr/0002-rules-as-data.md)
 - [ADR 0003 — why `lift` is defined against a barefoot reference](docs/adr/0003-lift-metric.md)
 - [ADR 0004 — the eval harness, and what it refuses to do](docs/adr/0004-eval-harness.md)
-- [The pitch](docs/pitch.md) — the stylist-first wedge, the moat, and the risks
 - [Language policy](docs/language-policy.md) — describe garments and geometry,
   never a body as a problem. Enforced in all 18 message templates and asserted in
   tests, not left to a prompt.
