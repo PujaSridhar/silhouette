@@ -43,6 +43,11 @@ VOLUME_SCALES = {
                 ("Loose", 1.4), ("Oversized", 1.65)],
     "bottom": [("Skinny", 0.85), ("Straight", 1.1), ("Relaxed", 1.4),
                ("Wide", 1.85), ("Very wide", 2.1)],
+    # A shoe is never oversized, and a stole is never fitted. Both sit in a
+    # narrow band of their own, so asking them the default question produced
+    # words that did not describe anything.
+    "shoe": [("Slim", 0.9), ("Regular", 1.0), ("Chunky", 1.2)],
+    "drape": [("Narrow stole", 1.0), ("Dupatta", 1.3), ("Wide shawl", 1.6)],
 }
 #: Only the draped pieces are asked for a second, lower width.
 VOLUME_LOWER_SCALE = [("Narrow", 1.1), ("A-line", 1.4), ("Full", 1.9)]
@@ -51,14 +56,14 @@ FORMALITY_SCALE = [("Casual", 0.25), ("Smart", 0.55), ("Dressy", 0.85)]
 
 
 def volume_scale(category: str) -> list[tuple[str, float]]:
-    """Bottoms get their own words; everything else uses the default set.
+    """The words for this category, falling back to the default set.
 
-    Shoes and the dupatta fall through to the default scale, which was
-    written for tops, outerwear and dresses. Its top end ("Oversized", 1.65)
-    does not mean much for a shoe, so those six pieces are the ones to look
-    at again if their numbers come out odd.
+    Bottoms, shoes and drapes each have their own. Tops, outerwear and
+    dresses share the default, which is the one those words were written
+    for. A category with no scale of its own gets the default rather than
+    no buttons at all, so a new category is rateable the day it is added.
     """
-    return VOLUME_SCALES["bottom" if category == "bottom" else "default"]
+    return VOLUME_SCALES.get(category, VOLUME_SCALES["default"])
 
 
 def _steps(scale) -> list[dict]:

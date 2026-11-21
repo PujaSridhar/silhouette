@@ -179,23 +179,68 @@ def test_the_skirt_structure_and_formality_scales(tool):
     assert tool.FORMALITY_SCALE == [("Casual", 0.25), ("Smart", 0.55), ("Dressy", 0.85)]
 
 
-@pytest.mark.parametrize("category", ["top", "outer", "dress", "shoe", "drape"])
-def test_everything_that_is_not_a_bottom_uses_the_default_scale(tool, category):
+@pytest.mark.parametrize("category", ["top", "outer", "dress"])
+def test_tops_outer_and_dresses_share_the_default_scale(tool, category):
     assert tool.volume_scale(category) is tool.VOLUME_SCALES["default"]
 
 
-def test_a_bottom_uses_the_bottom_scale(tool):
-    assert tool.volume_scale("bottom") is tool.VOLUME_SCALES["bottom"]
+@pytest.mark.parametrize("category", ["bottom", "shoe", "drape"])
+def test_these_categories_have_a_scale_of_their_own(tool, category):
+    assert tool.volume_scale(category) is tool.VOLUME_SCALES[category]
 
 
-def test_every_piece_is_offered_a_full_set_of_buttons(tool):
+def test_a_shoe_is_never_oversized(tool):
+    assert tool.VOLUME_SCALES["shoe"] == [
+        ("Slim", 0.9), ("Regular", 1.0), ("Chunky", 1.2)]
+
+
+def test_a_drape_is_never_fitted(tool):
+    assert tool.VOLUME_SCALES["drape"] == [
+        ("Narrow stole", 1.0), ("Dupatta", 1.3), ("Wide shawl", 1.6)]
+
+
+def test_the_shoe_and_drape_scales_sit_inside_the_default_range(tool):
+    """Both are narrow bands, which is the whole reason they are separate."""
+    for name in ("shoe", "drape"):
+        vals = [v for _, v in tool.VOLUME_SCALES[name]]
+        assert max(vals) - min(vals) < 0.7, name
+        assert max(vals) < 1.65, name
+
+
+def test_an_unknown_category_still_gets_buttons(tool):
+    """A category added later is rateable the same day, not blank."""
+    assert tool.volume_scale("something_new") is tool.VOLUME_SCALES["default"]
+
+
+#: How many volume words each category offers.
+WIDTHS = {"top": 5, "outer": 5, "dress": 5, "bottom": 5, "shoe": 3, "drape": 3}
+
+
+def test_every_piece_is_offered_the_right_buttons(tool):
     for it in tool.items():
-        assert len(it["volume_steps"]) == 5, it["id"]
+        cat = it["category"]
+        assert len(it["volume_steps"]) == WIDTHS[cat], it["id"]
         assert len(it["structure_steps"]) == 3, it["id"]
         assert len(it["formality_steps"]) == 3, it["id"]
         assert len(it["volume_lower_steps"]) == 3, it["id"]
-        expect = "Skinny" if it["category"] == "bottom" else "Fitted"
+        expect = {"bottom": "Skinny", "shoe": "Slim",
+                  "drape": "Narrow stole"}.get(cat, "Fitted")
         assert it["volume_steps"][0]["label"] == expect, it["id"]
+
+
+def test_the_keyboard_can_reach_every_volume_button(tool):
+    """The page binds 1-5 to volume; no scale may outrun that."""
+    for name, scale in tool.VOLUME_SCALES.items():
+        assert len(scale) <= 5, name
+
+
+def test_no_scale_offers_the_same_number_twice(tool):
+    for name, scale in tool.VOLUME_SCALES.items():
+        vals = [v for _, v in scale]
+        assert len(vals) == len(set(vals)), name
+        assert vals == sorted(vals), name
+        labels = [w for w, _ in scale]
+        assert len(labels) == len(set(labels)), name
 
 
 def test_a_button_value_round_trips_into_the_csv(tmp_path, tool):
