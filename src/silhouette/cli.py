@@ -11,15 +11,17 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import math
 import sys
 from pathlib import Path
 
 from .capsule import HAVE_ORTOOLS, plan_week
 from .evals.fitting import fit_weights
 from .evals.report import CONCLUSIVE_FLOOR, evaluate_labels
-from .evals.sampling import coverage_report, next_batch
+from .evals.raters import cant_judge_summary, inter_rater_agreement
+from .evals.sampling import SHARED_N, coverage_report, next_batch, shared_set
 from .evals.schema import DIMENSIONS, Label, Ratings
-from .evals.store import LabelStore
+from .evals.store import CantJudgeStore, LabelStore, cant_judge_path
 from .evals.synthetic import make_labels
 from .explain import render
 from .gaps import analyse
@@ -287,8 +289,49 @@ def cmd_eval(args) -> int:
         print(f"\n  {len(unex)} rules no label exercises - weights unfalsifiable:")
         for r in unex:
             print(f"      {r}")
+    if args.source == "expert":
+        _print_raters(rep, pool, wardrobe, cv, rules, CantJudgeStore(cant_judge_path(args.labels)).all())
     print()
     return 0
+
+
+def _print_raters(rep, pool, wardrobe, cv, rules, marks) -> None:
+    """Agreement between stylists, how far each is through the shared set,
+    and the outfits they could not judge. Silent when there is nothing to say."""
+    ir = inter_rater_agreement(pool)
+    if len(ir.raters) >= 2 or marks:
+        print(f"\n  between raters                     {ir.summary()}")
+    if len(ir.raters) >= 2:
+        for p in ir.pairs:
+            print(f"      {p.a} vs {p.b:<16} n={p.n:<3} qwk={p.qwk:+.3f}  exact={p.exact:.0%}")
+        if ir.n_units and not math.isnan(ir.would_wear_agree):
+            print(f"      would-wear agrees on {ir.would_wear_agree:.0%} of rater pairs")
+        if ir.n_units and rep.self_agreement_qwk is not None:
+            print("      (read beside self-agreement: two stylists rarely agree with each "
+                  "other more than each agrees with themselves)")
+        try:
+            keys = {t.key for t in shared_set(wardrobe, cv, rules)}
+        except Exception:
+            keys = set()
+        if keys:
+            done = {}
+            for l in pool:
+                if l.outfit_key in keys:
+                    done.setdefault(l.labeller, set()).add(l.outfit_key)
+            for m in marks:
+                if m.outfit_key in keys:
+                    done.setdefault(m.labeller, set()).add(m.outfit_key)
+            prog = ", ".join(f"{who} {len(done.get(who, ()))}/{len(keys)}" for who in ir.raters)
+            print(f"      shared set ({SHARED_N} outfits): {prog}")
+    if marks:
+        cj = cant_judge_summary(marks)
+        who = ", ".join(f"{w} {k}" for w, k in sorted(cj.by_rater.items()))
+        print(f"\n  couldn't judge                     {cj.n} mark{'' if cj.n == 1 else 's'} "
+              f"on {len(cj.by_outfit)} outfit{'' if len(cj.by_outfit) == 1 else 's'} ({who})")
+        print("      not ratings: none of these feed the numbers above")
+        for key, k in cj.unclear[:8]:
+            why = "; ".join(cj.reasons.get(key, [])[:3])
+            print(f"      {k} raters: {key}" + (f"  - {why}" if why else ""))
 
 
 def cmd_coverage(args) -> int:
@@ -372,7 +415,8 @@ def cmd_import(args) -> int:
     import json as _json
     import yaml as _yaml
 
-    raw = _json.loads(Path(args.file).read_text())
+    raws = [_json.loads(Path(f).read_text()) for f in args.files]
+    raw = _merge_exports(raws, args.files)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -413,6 +457,14 @@ def cmd_import(args) -> int:
             fh.write(_json.dumps(l, sort_keys=True) + "\n")
             n += 1
 
+    # "Couldn't judge" marks go to their own file, never into labels.jsonl:
+    # they carry no score, and nothing that reads labels should meet one.
+    cpath = cant_judge_path(lpath)
+    with open(cpath, "w") as fh:
+        for m in raw.get("cantJudge", []):
+            fh.write(_json.dumps(m, sort_keys=True) + "\n")
+    marks = CantJudgeStore(cpath).all()
+
     # Prove it round-trips before claiming success, rather than writing three
     # files and hoping.
     wardrobe = load_wardrobe(gpath)
@@ -428,6 +480,11 @@ def cmd_import(args) -> int:
                 bad.append((l.id, gid))
         if l.context not in cvobj.contexts:
             bad.append((l.id, "context:" + l.context))
+    for m in marks:
+        for slot in SLOTS:
+            gid = m.outfit.get(slot)
+            if gid and gid not in index:
+                bad.append((m.id, gid))
 
     print(f"\nImported into {out}")
     print(RULE)
@@ -437,6 +494,9 @@ def cmd_import(args) -> int:
           f" -> {lpath.name}")
     for who, k in sorted(store.by_labeller().items()):
         print(f"    {k:4d}  by {who}")
+    print(f"  couldn't judge {len(marks)} -> {cpath.name} (kept apart from labels)")
+    for warn in raw.get("_warnings", []):
+        print(f"  ! {warn}")
     if bad:
         print(f"\n  {len(bad)} dangling reference(s) - these labels cannot be scored:")
         for lid, ref in bad[:8]:
@@ -446,6 +506,43 @@ def cmd_import(args) -> int:
     print(f"\n  next:  silhouette --wardrobe {gpath} --style-cv {cvpath} \\")
     print(f"             --labels {lpath} eval --source expert")
     return 0
+
+
+def _merge_exports(raws: list[dict], names: list[str]) -> dict:
+    """Several stylists' exports of the SAME wardrobe, as one.
+
+    Each stylist rating in their own browser exports their own file. They
+    overlap only if the garment ids match, which is what makes their shared
+    set the same outfits, so a garment id that means two different things is
+    an error, not something to paper over. The Style CV comes from the first
+    file; a later file with a different frame is reported, because the
+    scores would then not be the ones the stylists saw."""
+    if len(raws) == 1:
+        return raws[0]
+    garments: dict[str, dict] = {}
+    labels: dict[str, dict] = {}
+    marks: dict[str, dict] = {}
+    warnings: list[str] = []
+    cv = raws[0]["styleCV"]
+    for raw, name in zip(raws, names):
+        for g in raw.get("garments", []):
+            prev = garments.get(g["id"])
+            if prev is not None and prev != g:
+                raise SystemExit(f"{name}: garment {g['id']} differs from an earlier file - "
+                                 "these exports are not the same wardrobe")
+            garments[g["id"]] = g
+        for l in raw.get("labels", []):
+            labels[l["id"]] = l
+        for m in raw.get("cantJudge", []):
+            marks[m["id"]] = m
+        other = raw.get("styleCV", {})
+        if (other.get("landmarks"), other.get("widths"), other.get("goals")) != (
+                cv.get("landmarks"), cv.get("widths"), cv.get("goals")):
+            warnings.append(f"{name}: a different frame or goals from {names[0]}; "
+                            f"using {names[0]}'s")
+    return {"styleCV": cv, "garments": list(garments.values()),
+            "labels": list(labels.values()), "cantJudge": list(marks.values()),
+            "_warnings": warnings}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -512,8 +609,10 @@ def build_parser() -> argparse.ArgumentParser:
     j.add_argument("--write", action="store_true", help="apply if it improves")
     j.set_defaults(fn=cmd_fit)
 
-    k = sub.add_parser("import-app", help="ingest a labelling export from the app")
-    k.add_argument("file", help="the JSON the app's Rate tab exports")
+    k = sub.add_parser("import-app", help="ingest labelling exports from the app")
+    k.add_argument("files", nargs="+", metavar="file",
+                   help="the JSON the app's Rate tab exports; several stylists' files "
+                        "of the same wardrobe merge into one")
     k.add_argument("--out", default="evals/imported", help="directory to write into")
     k.set_defaults(fn=cmd_import)
 

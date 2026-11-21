@@ -17,7 +17,8 @@ from datetime import datetime, timezone
 
 from ..models import outfit_slot_key
 
-__all__ = ["Ratings", "Label", "label_from_dict", "DIMENSIONS"]
+__all__ = ["Ratings", "Label", "label_from_dict", "CantJudge", "cant_judge_from_dict",
+           "DIMENSIONS"]
 
 DIMENSIONS = ("proportion", "balance", "formality", "colour", "cohesion")
 
@@ -101,6 +102,50 @@ def label_from_dict(d: dict) -> Label:
         labeller=d.get("labeller", "unknown"),
         source=d.get("source", "expert"),
         note=d.get("note", ""),
+        engine_version=int(d.get("engine_version", 1)),
+        created_at=d.get("created_at", ""),
+    )
+
+
+@dataclass(frozen=True)
+class CantJudge:
+    """A rater looked at an outfit and could not judge it.
+
+    Kept apart from `Label` on purpose, in its own file. It carries no score,
+    so nothing that reads labels (the scoreboard, the fitter, agreement) can
+    mistake it for one. It is still worth keeping: an outfit several stylists
+    could not judge says the card is missing something (a photo, a fabric, a
+    drape), and a rater who skips everything of one kind says the same about
+    the rubric. `reason` is whatever they typed in the note, often nothing.
+    """
+
+    id: str
+    outfit: dict[str, object]      # slot -> garment id, plus "tucked": bool
+    context: str
+    labeller: str
+    reason: str = ""
+    engine_version: int = 1
+    created_at: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
+    )
+
+    @property
+    def outfit_key(self) -> str:
+        """Same identity as `Label.outfit_key`, so the two can be joined."""
+        return (outfit_slot_key(self.outfit.get)
+                + f"|tucked={bool(self.outfit.get('tucked'))}|{self.context}")
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def cant_judge_from_dict(d: dict) -> CantJudge:
+    return CantJudge(
+        id=d["id"],
+        outfit=d["outfit"],
+        context=d["context"],
+        labeller=d.get("labeller") or "unknown",
+        reason=d.get("reason") or "",
         engine_version=int(d.get("engine_version", 1)),
         created_at=d.get("created_at", ""),
     )
