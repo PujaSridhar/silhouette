@@ -34,6 +34,42 @@ REFERENCE = ROOT / "data" / "wardrobe.csv"
 PHOTOS = ROOT / "photos"
 PAGE = Path(__file__).with_name("rate_wardrobe.html")
 
+#: The scales, as words. Judging "is this Relaxed or Loose" is a question a
+#: stylist can answer off a photo; judging "is this 1.2 or 1.4" is the same
+#: question wearing a disguise, and invites false precision. The number is
+#: what gets stored; the word is what gets asked.
+VOLUME_SCALES = {
+    "default": [("Fitted", 0.85), ("Close", 1.0), ("Relaxed", 1.2),
+                ("Loose", 1.4), ("Oversized", 1.65)],
+    "bottom": [("Skinny", 0.85), ("Straight", 1.1), ("Relaxed", 1.4),
+               ("Wide", 1.85), ("Very wide", 2.1)],
+    # A shoe is never oversized, and a stole is never fitted. Both sit in a
+    # narrow band of their own, so asking them the default question produced
+    # words that did not describe anything.
+    "shoe": [("Slim", 0.9), ("Regular", 1.0), ("Chunky", 1.2)],
+    "drape": [("Narrow stole", 1.0), ("Dupatta", 1.3), ("Wide shawl", 1.6)],
+}
+#: Only the draped pieces are asked for a second, lower width.
+VOLUME_LOWER_SCALE = [("Narrow", 1.1), ("A-line", 1.4), ("Full", 1.9)]
+STRUCTURE_SCALE = [("Soft", 0.15), ("Medium", 0.4), ("Stiff", 0.75)]
+FORMALITY_SCALE = [("Casual", 0.25), ("Smart", 0.55), ("Dressy", 0.85)]
+
+
+def volume_scale(category: str) -> list[tuple[str, float]]:
+    """The words for this category, falling back to the default set.
+
+    Bottoms, shoes and drapes each have their own. Tops, outerwear and
+    dresses share the default, which is the one those words were written
+    for. A category with no scale of its own gets the default rather than
+    no buttons at all, so a new category is rateable the day it is added.
+    """
+    return VOLUME_SCALES.get(category, VOLUME_SCALES["default"])
+
+
+def _steps(scale) -> list[dict]:
+    return [{"label": w, "value": v} for w, v in scale]
+
+
 #: Fractions of crown->sole to crop for each category, so the zone the volume
 #: question is about is what she actually sees.
 ZONES = {
@@ -100,7 +136,12 @@ def items() -> list[dict]:
     photos = best_photos()
     out = []
     for r in _rows(REAL):
+        shots = photos.get(r["id"], [])
         out.append({
+            "volume_steps": _steps(volume_scale(r["category"])),
+            "volume_lower_steps": _steps(VOLUME_LOWER_SCALE),
+            "structure_steps": _steps(STRUCTURE_SCALE),
+            "formality_steps": _steps(FORMALITY_SCALE),
             "id": r["id"], "name": r["name"], "category": r["category"],
             "subcategory": r.get("subcategory", ""),
             "fit": r.get("fit", ""), "length": r.get("length", ""),
@@ -109,13 +150,17 @@ def items() -> list[dict]:
             # volume_lower is only meaningful where one piece covers both
             # zones at different widths, which here means the draped pieces.
             "two_part": r["category"] == "dress",
-            "photos": photos.get(r["id"], []),
+            "photos": shots,
             "volume": (r.get("volume") or "").strip(),
             "volume_lower": (r.get("volume_lower") or "").strip(),
             "structure": (r.get("structure") or "").strip(),
             "formality": (r.get("formality") or "").strip(),
             "anchors": anchors(r["category"]),
         })
+    # A piece photographed more than once is the one worth judging first: a
+    # second angle is the only check available on whether the first was
+    # misleading, and those answers then anchor the single-photo ones.
+    out.sort(key=lambda i: (len(i["photos"]) < 2))
     return out
 
 
@@ -140,7 +185,9 @@ def save(gid: str, values: dict) -> dict:
         hit.update({k: str(v) for k, v in values.items()})
         tmp = REAL.with_suffix(".csv.tmp")
         with open(tmp, "w", newline="") as fh:
-            w = csv.DictWriter(fh, fieldnames=fields)
+            # csv defaults to \r\n, which rewrites every line of the file on
+            # the first save and buries a 13-row change in a 44-row diff.
+            w = csv.DictWriter(fh, fieldnames=fields, lineterminator="\n")
             w.writeheader()
             w.writerows(rows)
         tmp.replace(REAL)          # atomic, so an interrupted save cannot truncate

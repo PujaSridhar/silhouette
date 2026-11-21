@@ -5,7 +5,7 @@
 <style>
   :root{
     --bg:#13141a; --panel:#1b1d25; --line:#2c2f3a; --ink:#e9eaf0;
-    --dim:#9ea3b4; --accent:#8ab4ff; --ok:#6ee7a8; --warn:#ffcc66;
+    --dim:#9ea3b4; --accent:#8ab4ff; --ok:#6ee7a8;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -16,39 +16,51 @@
   h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
   .muted{color:var(--dim)}
   .bar{flex:1;min-width:140px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
-  .bar>i{display:block;height:100%;background:var(--ok);width:0}
-  main{display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,440px);
-       gap:24px;padding:20px;align-items:start;max-width:1200px;margin:0 auto}
-  @media(max-width:860px){main{grid-template-columns:1fr}}
+  .bar>i{display:block;height:100%;background:var(--ok);width:0;transition:width .2s}
+  main{display:grid;grid-template-columns:minmax(260px,1fr) minmax(340px,470px);
+       gap:24px;padding:20px;align-items:start;max-width:1240px;margin:0 auto}
+  @media(max-width:880px){main{grid-template-columns:1fr}}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
   figure{margin:0}
-  img#shot{width:100%;border-radius:8px;display:block;background:#0c0d11;min-height:180px}
+  img#shot{width:100%;border-radius:8px;display:block;background:#0c0d11;min-height:200px}
   .swatch{display:inline-block;width:12px;height:12px;border-radius:3px;
           border:1px solid rgba(255,255,255,.25);vertical-align:-1px;margin-right:6px}
   h2{font-size:18px;margin:0 0 2px}
-  .meta{color:var(--dim);font-size:13px;margin-bottom:14px}
-  table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0 2px}
+  .meta{color:var(--dim);font-size:13px;margin-bottom:12px}
+  .tag{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:999px;
+       padding:1px 8px;margin-left:8px;color:var(--dim);vertical-align:1px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0}
   th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
   th{color:var(--dim);font-weight:500}
   td.num{font-variant-numeric:tabular-nums;text-align:right}
-  label{display:block;margin:14px 0 4px;font-size:13px;color:var(--dim)}
-  label b{color:var(--ink);font-weight:600}
-  input[type=number]{width:100%;padding:9px 10px;border-radius:7px;font-size:15px;
-      background:#0f1016;border:1px solid var(--line);color:var(--ink);
+  .q{margin-top:16px}
+  .q>span.lab{font-size:13px;color:var(--dim)}
+  .q>span.lab b{color:var(--ink);font-weight:600}
+  .choices{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+  .choices button{flex:1 1 0;min-width:72px;padding:9px 6px;border-radius:8px;
+      border:1px solid var(--line);background:#0f1016;color:var(--ink);cursor:pointer;
+      font-size:13.5px;line-height:1.25;text-align:center}
+  .choices button small{display:block;color:var(--dim);font-size:10.5px;
       font-variant-numeric:tabular-nums}
-  input:focus{outline:2px solid var(--accent);outline-offset:1px}
-  .row{display:flex;gap:10px}.row>*{flex:1}
-  .scale{font-size:12px;color:var(--dim);margin-top:4px}
-  .btns{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
-  button{padding:9px 15px;border-radius:7px;border:1px solid var(--line);
+  .choices button:hover{border-color:var(--accent)}
+  .choices button[aria-pressed=true]{background:var(--accent);color:#0b1020;border-color:transparent;
+      font-weight:650}
+  .choices button[aria-pressed=true] small{color:#0b1020;opacity:.72}
+  .choices button kbd{display:none}
+  .offscale{font-size:11.5px;color:#ffcc66;margin-top:6px}
+  .btns{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+  .btns button{padding:9px 15px;border-radius:7px;border:1px solid var(--line);
          background:#232634;color:var(--ink);font-size:14px;cursor:pointer}
-  button.primary{background:var(--accent);color:#0b1020;border-color:transparent;font-weight:600}
-  button:disabled{opacity:.45;cursor:default}
-  #list{display:flex;flex-wrap:wrap;gap:5px;padding:0 20px 28px;max-width:1200px;margin:0 auto}
-  #list button{padding:3px 8px;font-size:11.5px;border-radius:999px}
+  .btns button.primary{background:var(--accent);color:#0b1020;border-color:transparent;font-weight:600}
+  .btns button:disabled{opacity:.45;cursor:default}
+  #list{display:flex;flex-wrap:wrap;gap:5px;align-items:center;
+        padding:0 20px 28px;max-width:1240px;margin:0 auto}
+  #list button{padding:3px 9px;font-size:11.5px;border-radius:999px;cursor:pointer;
+        border:1px solid var(--line);background:#1b1d25;color:var(--ink)}
   #list button.done{border-color:var(--ok);color:var(--ok)}
-  #list button.now{background:var(--accent);color:#0b1020}
-  #msg{min-height:18px;font-size:13px;margin-top:8px}
+  #list button.now{background:var(--accent);color:#0b1020;border-color:transparent}
+  #list .sep{width:100%;font-size:11px;color:var(--dim);margin:8px 0 2px}
+  #msg{min-height:20px;font-size:13px;margin-top:10px}
   .err{color:#ff9a9a}.good{color:var(--ok)}
   kbd{background:#0f1016;border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:11px}
 </style>
@@ -77,25 +89,24 @@
       <th class="num">struct</th><th class="num">form</th>
     </tr></thead><tbody></tbody></table>
 
-    <label for="volume"><b>volume</b> — garment width ÷ body width at that zone</label>
-    <input id="volume" type="number" step="0.05" min="0.3" max="3" inputmode="decimal">
-    <div class="scale">under 1.00 is fitted · 1.00 is body width · about 1.65 is oversized</div>
-
-    <div id="lowerwrap" hidden>
-      <label for="volume_lower"><b>volume_lower</b> — the same ratio at the hip and below</label>
-      <input id="volume_lower" type="number" step="0.05" min="0.3" max="3" inputmode="decimal">
+    <div class="q">
+      <span class="lab"><b>Volume</b> — garment width next to body width at that zone</span>
+      <div class="choices" id="c_volume"></div>
     </div>
 
-    <div class="row">
-      <div>
-        <label for="structure"><b>structure</b> 0–1</label>
-        <input id="structure" type="number" step="0.05" min="0" max="1" inputmode="decimal">
-        <div class="scale">how stiffly it holds its own shape</div>
-      </div>
-      <div>
-        <label for="formality"><b>formality</b> 0–1</label>
-        <input id="formality" type="number" step="0.05" min="0" max="1" inputmode="decimal">
-      </div>
+    <div class="q" id="q_volume_lower" hidden>
+      <span class="lab"><b>Skirt</b> — the same, at the hip and below</span>
+      <div class="choices" id="c_volume_lower"></div>
+    </div>
+
+    <div class="q">
+      <span class="lab"><b>Structure</b> — how stiffly it holds its own shape</span>
+      <div class="choices" id="c_structure"></div>
+    </div>
+
+    <div class="q">
+      <span class="lab"><b>Formality</b></span>
+      <div class="choices" id="c_formality"></div>
     </div>
 
     <div class="btns">
@@ -105,7 +116,7 @@
       <button id="next">→</button>
       <button id="other" hidden>Other photo</button>
     </div>
-    <div id="msg"><span class="muted"><kbd>Enter</kbd> save · <kbd>s</kbd> skip · <kbd>←</kbd> <kbd>→</kbd> move</span></div>
+    <div id="msg"></div>
   </section>
 </main>
 
@@ -113,14 +124,20 @@
 
 <script>
 const $ = s => document.querySelector(s);
-const F = ["volume","volume_lower","structure","formality"];
-let items = [], at = 0, shot = 0;
+const FIELDS = ["volume","volume_lower","structure","formality"];
+const KEYS = {volume:["1","2","3","4","5"], volume_lower:["z","x","c"],
+              structure:["q","w","e"], formality:["a","s","d"]};
+const HINT = `<span class="muted"><kbd>1</kbd>–<kbd>5</kbd> volume · `+
+  `<kbd>q</kbd><kbd>w</kbd><kbd>e</kbd> structure · <kbd>a</kbd><kbd>s</kbd><kbd>d</kbd> formality · `+
+  `<kbd>z</kbd><kbd>x</kbd><kbd>c</kbd> skirt · <kbd>Enter</kbd> save · <kbd>Esc</kbd> skip</span>`;
+
+let items = [], at = 0, shot = 0, picked = {};
 
 const rated = it => it.volume !== "";
+const near = (a,b) => a !== "" && Math.abs(parseFloat(a) - b) < 1e-9;
 
 async function load(){
-  const r = await fetch("/api/items");
-  items = (await r.json()).items;
+  items = (await (await fetch("/api/items")).json()).items;
   const first = items.findIndex(i => !rated(i));
   at = first === -1 ? 0 : first;
   draw();
@@ -134,9 +151,16 @@ function progress(){
 
 function drawList(){
   const box = $("#list"); box.innerHTML = "";
+  let gap = false;
   items.forEach((it,i) => {
+    if (it.photos.length < 2 && !gap){
+      const s = document.createElement("div");
+      s.className = "sep"; s.textContent = "seen in one photo only";
+      box.appendChild(s); gap = true;
+    }
     const b = document.createElement("button");
     b.textContent = it.id;
+    b.title = `${it.photos.length} photo(s)`;
     if (rated(it)) b.classList.add("done");
     if (i === at) b.classList.add("now");
     b.onclick = () => { at = i; shot = 0; draw(); };
@@ -144,28 +168,62 @@ function drawList(){
   });
 }
 
+function drawChoices(field, steps){
+  const box = $("#c_" + field);
+  box.innerHTML = "";
+  const stale = box.parentNode.querySelector(".offscale");
+  if (stale) stale.remove();
+  // A value typed before the buttons existed will not match any of them.
+  // Say so, rather than showing nothing selected and letting a save quietly
+  // round a judgement she already made.
+  const cur = picked[field];
+  if (cur !== undefined && cur !== "" && !steps.some(s => near(cur, s.value))){
+    const n = document.createElement("div");
+    n.className = "offscale";
+    n.textContent = `already saved as ${cur} — not one of these; `
+      + `picking a word replaces it`;
+    box.parentNode.insertBefore(n, box.nextSibling);
+  }
+  steps.forEach((s, n) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.innerHTML = `${s.label}<small>${s.value}</small>`;
+    b.setAttribute("aria-pressed", String(near(picked[field] ?? "", s.value)));
+    b.onclick = () => { picked[field] = String(s.value); drawChoices(field, steps); };
+    b.title = `${s.label} = ${s.value}   (${KEYS[field][n] || ""})`;
+    box.appendChild(b);
+  });
+}
+
 function draw(){
   const it = items[at];
   if (!it) return;
-  $("#name").innerHTML = `<span class="swatch" style="background:${it.color_hex}"></span>${it.name}`;
-  $("#meta").textContent =
-    [it.id, it.category + " / " + it.subcategory, it.fit, it.length,
-     it.fabric_weight, it.drape].filter(Boolean).join(" · ");
+  picked = {};
+  FIELDS.forEach(f => { if (it[f] !== "") picked[f] = it[f]; });
+
+  const multi = it.photos.length >= 2
+    ? `<span class="tag">${it.photos.length} photos</span>` : "";
+  $("#name").innerHTML =
+    `<span class="swatch" style="background:${it.color_hex}"></span>${it.name}${multi}`;
+  $("#meta").textContent = [it.id, it.category + " / " + it.subcategory, it.fit,
+    it.length, it.fabric_weight, it.drape].filter(Boolean).join(" · ");
 
   const tb = $("#anchors tbody"); tb.innerHTML = "";
-  if (!it.anchors.length){
+  if (!it.anchors.length)
     tb.innerHTML = `<tr><td colspan="4" class="muted">no judged piece in this category to anchor against</td></tr>`;
-  }
   it.anchors.forEach(a => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td><span class="swatch" style="background:${a.color_hex}"></span>${a.name}</td>`+
-      `<td class="num">${a.volume || "–"}</td><td class="num">${a.structure || "–"}</td>`+
-      `<td class="num">${a.formality || "–"}</td>`;
+      `<td class="num">${a.volume||"–"}</td><td class="num">${a.structure||"–"}</td>`+
+      `<td class="num">${a.formality||"–"}</td>`;
     tb.appendChild(tr);
   });
 
-  $("#lowerwrap").hidden = !it.two_part;
-  F.forEach(f => { const el = $("#"+f); if (el) el.value = it[f] ?? ""; });
+  drawChoices("volume", it.volume_steps);
+  drawChoices("structure", it.structure_steps);
+  drawChoices("formality", it.formality_steps);
+  $("#q_volume_lower").hidden = !it.two_part;
+  if (it.two_part) drawChoices("volume_lower", it.volume_lower_steps);
 
   if (it.photos.length){
     shot = Math.min(shot, it.photos.length-1);
@@ -180,45 +238,61 @@ function draw(){
   }
   $("#prev").disabled = at === 0;
   $("#next").disabled = at === items.length-1;
+  $("#msg").innerHTML = HINT;
   progress(); drawList();
-  $("#volume").focus();
 }
 
-function say(text, cls){ $("#msg").innerHTML = `<span class="${cls||""}">${text}</span>`; }
+function say(t, cls){ $("#msg").innerHTML = `<span class="${cls||""}">${t}</span>`; }
 
 async function save(){
   const it = items[at];
+  if (!picked.volume){ say("pick a volume first", "err"); return; }
   const body = {id: it.id};
-  for (const f of F){
-    const el = $("#"+f); if (!el) continue;
-    if (f === "volume_lower" && !it.two_part) continue;
-    body[f] = el.value.trim();
-  }
-  if (!body.volume){ say("volume is the one that cannot be left empty", "err"); return; }
-  const r = await fetch("/api/save", {method:"POST", headers:{"Content-Type":"application/json"},
-                                      body: JSON.stringify(body)});
+  FIELDS.forEach(f => {
+    if (f === "volume_lower" && !it.two_part) return;
+    if (picked[f] !== undefined) body[f] = picked[f];
+  });
+  const r = await fetch("/api/save", {method:"POST",
+    headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
   const out = await r.json();
   if (!r.ok){ say(out.error || "save failed", "err"); return; }
-  F.forEach(f => { if (f in body) it[f] = body[f]; });
-  say(`saved ${it.id}`, "good");
+  FIELDS.forEach(f => { if (f in body) it[f] = body[f]; });
   const nxt = items.findIndex((x,i) => i > at && !rated(x));
   at = nxt === -1 ? Math.min(at+1, items.length-1) : nxt;
   shot = 0; draw();
+  say(`saved ${it.id}`, "good");
+}
+
+function skip(){
+  at = Math.min(at+1, items.length-1); shot = 0; draw();
+  say("skipped — it stays in the queue");
 }
 
 $("#save").onclick = save;
-$("#skip").onclick = () => { at = Math.min(at+1, items.length-1); shot=0; draw();
-                             say("skipped — it stays in the queue"); };
+$("#skip").onclick = skip;
 $("#prev").onclick = () => { at = Math.max(at-1,0); shot=0; draw(); };
 $("#next").onclick = () => { at = Math.min(at+1, items.length-1); shot=0; draw(); };
 $("#other").onclick = () => { shot++; draw(); };
 
 addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === "Enter"){ e.preventDefault(); save(); return; }
-  if (e.target.tagName === "INPUT") return;
-  if (e.key === "s") $("#skip").click();
-  if (e.key === "ArrowLeft") $("#prev").click();
-  if (e.key === "ArrowRight") $("#next").click();
+  if (e.key === "Escape"){ e.preventDefault(); skip(); return; }
+  if (e.key === "ArrowLeft"){ $("#prev").click(); return; }
+  if (e.key === "ArrowRight"){ $("#next").click(); return; }
+  const it = items[at]; if (!it) return;
+  for (const [field, keys] of Object.entries(KEYS)){
+    const n = keys.indexOf(e.key.toLowerCase());
+    if (n === -1) continue;
+    if (field === "volume_lower" && !it.two_part) return;
+    const steps = it[field + "_steps"] || [];
+    if (n < steps.length){
+      e.preventDefault();
+      picked[field] = String(steps[n].value);
+      drawChoices(field, steps);
+    }
+    return;
+  }
 });
 
 load().catch(e => say("could not load: " + e, "err"));
